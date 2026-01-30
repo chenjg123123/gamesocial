@@ -1,3 +1,4 @@
+// middleware 提供一组可复用的 HTTP 中间件：链式组合、崩溃恢复、访问日志与 CORS。
 package middleware
 
 import (
@@ -8,7 +9,8 @@ import (
 
 type Middleware func(http.Handler) http.Handler
 
-// Chain 按从左到右的顺序，将中间件包裹到 handler 外层。
+// Chain 将多个中间件按传入顺序组合起来，返回最终的 http.Handler。
+// 例如：Chain(h, A(), B()) 等价于 A(B(h))。
 func Chain(handler http.Handler, middlewares ...Middleware) http.Handler {
 	wrapped := handler
 	for i := len(middlewares) - 1; i >= 0; i-- {
@@ -17,7 +19,7 @@ func Chain(handler http.Handler, middlewares ...Middleware) http.Handler {
 	return wrapped
 }
 
-// Recover 捕获 panic 并返回 HTTP 500，避免服务因异常崩溃。
+// Recover 捕获 handler 链路中的 panic，避免整个进程崩溃，并返回 500。
 func Recover() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +33,7 @@ func Recover() Middleware {
 	}
 }
 
-// Logging 记录简单访问日志：方法、路径与耗时。
+// Logging 打印每个请求的 method/path 与耗时，便于排查性能与请求轨迹。
 func Logging() Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +44,7 @@ func Logging() Middleware {
 	}
 }
 
-// CORS 设置跨域相关响应头，并处理 OPTIONS 预检请求。
+// CORS 为跨域请求设置响应头，并在 OPTIONS 预检请求时直接返回 204。
 func CORS(allowOrigin string) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -51,11 +53,13 @@ func CORS(allowOrigin string) Middleware {
 				origin = "*"
 			}
 
+			// 允许前端跨域访问（小程序/后台管理台/本地调试等）。
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
+			// 预检请求无需进入业务 handler。
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return

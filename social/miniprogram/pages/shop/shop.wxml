@@ -1,14 +1,6 @@
 <navigation-bar title="兑换" back="{{false}}" color="black" background="#FFF"></navigation-bar>
 <scroll-view class="scrollarea" scroll-y type="list">
   <view class="page">
-    <view class="card">
-      <view class="title">我的饮品</view>
-      <view class="drink-row">
-        <view class="drink-val">{{drinkQuantity}} 杯</view>
-        <button type="primary" size="mini" bindtap="exchangeDrink" loading="{{exchangeLoading}}">用积分兑换 +1</button>
-      </view>
-    </view>
-
     <view class="section-title">积分商品</view>
     <view wx:if="{{goods.length === 0}}" class="empty">暂无商品</view>
     <view wx:for="{{goods}}" wx:key="id" class="goods-card">
@@ -21,12 +13,15 @@
 
     <view class="section-title">我的订单</view>
     <view wx:if="{{orders.length === 0}}" class="empty">暂无订单</view>
-    <view wx:for="{{orders}}" wx:key="orderNo" class="order-row">
+    <view wx:for="{{orders}}" wx:key="id" class="order-row">
       <view class="order-left">
-        <view class="order-no">{{item.orderNo}}</view>
+        <view class="order-no">{{item.orderNo || ('订单#' + item.id)}}</view>
         <view class="order-sub">{{item.status}} · {{item.createdAt}}</view>
       </view>
-      <view class="order-right">-{{item.totalPoints}}</view>
+      <view class="order-right">
+        <view class="order-points">-{{item.totalPoints}}</view>
+        <button wx:if="{{item.status === 'CREATED'}}" size="mini" data-id="{{item.id}}" bindtap="cancelOrder">取消</button>
+      </view>
     </view>
   </view>
 </scroll-view>

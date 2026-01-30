@@ -4,7 +4,8 @@
     "pages/tournaments/tournaments",
     "pages/tasks/tasks",
     "pages/shop/shop",
-    "pages/me/me"
+    "pages/me/me",
+    "pages/admin/admin"
   ],
   "window": {
     "navigationBarTextStyle": "black",

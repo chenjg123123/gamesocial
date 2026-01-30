@@ -18,7 +18,7 @@ Page({
     nickname: '',
     avatarUrl: '',
     ledger: [],
-    nextCursor: '',
+    hasMore: false,
   },
   onShow() {
     this.refresh()
@@ -36,16 +36,17 @@ Page({
     const that = this
     that.setData({ loading: true })
     Promise.all([
-      request('/api/user/me').catch(() => null),
-      request('/api/points/ledger?cursor=&limit=20').catch(() => ({ items: [], nextCursor: '' })),
+      request('/api/users/me').catch(() => null),
+      request('/api/points/ledgers?offset=0&limit=20').catch(() => []),
     ])
       .then(resList => {
         const profile = resList[0]
-        const ledgerRes = resList[1] || { items: [], nextCursor: '' }
+        const ledgerRes = resList[1]
+        const items = Array.isArray(ledgerRes) ? ledgerRes : (ledgerRes && ledgerRes.items) || []
         if (profile) that.applyProfile(profile)
         that.setData({
-          ledger: ledgerRes.items || [],
-          nextCursor: ledgerRes.nextCursor || '',
+          ledger: items,
+          hasMore: items.length >= 20,
         })
       })
       .finally(() => {
@@ -66,7 +67,7 @@ Page({
     const nickname = String(that.data.nickname || '').trim()
     const avatarUrl = String(that.data.avatarUrl || '').trim()
     that.setData({ saving: true })
-    request('/api/user/me', { method: 'PUT', data: { nickname, avatarUrl } })
+    request('/api/users/me', { method: 'PUT', data: { nickname, avatarUrl } })
       .then(profile => {
         that.applyProfile(profile)
         wx.showToast({ title: '已保存', icon: 'success' })
@@ -74,6 +75,9 @@ Page({
       .finally(() => {
         that.setData({ saving: false })
       })
+  },
+  openAdmin() {
+    wx.navigateTo({ url: '/pages/admin/admin' })
   },
   relogin() {
     const that = this
@@ -123,23 +127,20 @@ Page({
       nickname: '',
       avatarUrl: '',
       ledger: [],
-      nextCursor: '',
+      hasMore: false,
     })
     wx.showToast({ title: '已退出', icon: 'success' })
   },
   loadMore() {
     const that = this
-    if (!that.data.nextCursor) return
+    if (!that.data.hasMore) return
     that.setData({ loadingMore: true })
-    request(
-      `/api/points/ledger?cursor=${encodeURIComponent(that.data.nextCursor)}&limit=20`
-    )
+    request(`/api/points/ledgers?offset=${that.data.ledger.length}&limit=20`)
       .then(res => {
-        const items = (res && res.items) || []
-        const nextCursor = (res && res.nextCursor) || ''
+        const items = Array.isArray(res) ? res : (res && res.items) || []
         that.setData({
           ledger: that.data.ledger.concat(items),
-          nextCursor: nextCursor,
+          hasMore: items.length >= 20,
         })
       })
       .finally(() => {

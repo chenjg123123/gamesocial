@@ -28,20 +28,6 @@ page {
   color: #111;
 }
 
-.drink-row {
-  margin-top: 18rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-
-.drink-val {
-  font-size: 36rpx;
-  font-weight: 800;
-  color: #111;
-}
-
 .section-title {
   font-size: 28rpx;
   font-weight: 600;
@@ -105,6 +91,13 @@ page {
 }
 
 .order-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10rpx;
+}
+
+.order-points {
   font-size: 28rpx;
   font-weight: 800;
   color: #111;

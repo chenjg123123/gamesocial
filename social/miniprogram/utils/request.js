@@ -1,6 +1,6 @@
 const { clearToken, getToken } = require('./storage')
 
-const BASE_URL = 'http://localhost:8080'
+const BASE_URL = 'https://www.u835587.nyat.app:26462'
 
 const normalizeErrorMessage = data => {
   if (!data || typeof data !== 'object') return '请求失败'
@@ -11,6 +11,17 @@ const extractData = data => {
   if (!data || typeof data !== 'object') return data
   if (Object.prototype.hasOwnProperty.call(data, 'data')) return data.data
   return data
+}
+
+const normalizeNetworkErrorMessage = err => {
+  const raw = (err && err.errMsg) || ''
+  const lower = String(raw).toLowerCase()
+  if (lower.includes('not in domain list')) {
+    return '请求域名未配置：请配置小程序 request 合法域名或在开发工具关闭域名校验'
+  }
+  if (lower.includes('timeout')) return '请求超时'
+  if (lower.includes('ssl')) return 'HTTPS/证书异常'
+  return raw || '网络异常'
 }
 
 const request = (path, options) => {
@@ -44,9 +55,22 @@ const request = (path, options) => {
         }
 
         const envelope = res.data || {}
-        const code = envelope.code
-        if (typeof code === 'number' && code !== 0) {
+        const hasBizCode = envelope && typeof envelope === 'object' && Object.prototype.hasOwnProperty.call(envelope, 'code')
+        if (hasBizCode) {
+          const code = envelope.code
+          if (code === 200) {
+            resolve(extractData(envelope))
+            return
+          }
+
           const msg = envelope.message || envelope.msg || '请求失败'
+          if (code === 401) {
+            clearToken()
+            wx.showToast({ title: '请重新登录', icon: 'none' })
+            wx.reLaunch({ url: '/pages/me/me' })
+            reject(new Error('unauthorized'))
+            return
+          }
           wx.showToast({ title: msg, icon: 'none' })
           reject(new Error(msg))
           return
@@ -55,7 +79,7 @@ const request = (path, options) => {
         resolve(extractData(res.data))
       },
       fail: err => {
-        const msg = (err && err.errMsg) || '网络异常'
+        const msg = normalizeNetworkErrorMessage(err)
         wx.showToast({ title: msg, icon: 'none' })
         reject(err)
       },

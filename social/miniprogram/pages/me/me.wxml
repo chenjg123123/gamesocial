@@ -14,6 +14,7 @@
       <view class="profile-actions">
         <button size="mini" type="primary" bindtap="saveProfile" loading="{{saving}}">保存资料</button>
         <button size="mini" bindtap="relogin" loading="{{reloginLoading}}">重新登录</button>
+        <button size="mini" bindtap="openAdmin">管理后台</button>
         <button size="mini" type="warn" bindtap="doLogout">退出</button>
       </view>
     </view>
@@ -30,7 +31,7 @@
         <view class="ledger-balance">余额 {{item.balanceAfter}}</view>
       </view>
     </view>
-    <button wx:if="{{nextCursor}}" size="mini" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
+    <button wx:if="{{hasMore}}" size="mini" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
   </view>
 </scroll-view>
 

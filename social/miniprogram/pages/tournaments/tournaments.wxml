@@ -18,16 +18,6 @@
         </button>
       </view>
     </view>
-
-    <view class="section-title">我的成绩</view>
-    <view wx:if="{{results.length === 0}}" class="empty">暂无成绩</view>
-    <view wx:for="{{results}}" wx:key="tournamentId" class="row">
-      <view class="row-left">
-        <view class="row-title">{{item.title || ('赛事#' + item.tournamentId)}}</view>
-        <view class="row-sub">{{item.publishedAt}}</view>
-      </view>
-      <view class="row-right">第{{item.rankNo}}名</view>
-    </view>
   </view>
 </scroll-view>
 

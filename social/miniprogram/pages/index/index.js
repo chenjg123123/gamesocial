@@ -7,7 +7,6 @@ Page({
     user: getUserCache() || {},
     vipLabel: '普通用户',
     pointsBalance: 0,
-    drinkQuantity: 0,
   },
   onShow() {
     this.refresh()
@@ -17,16 +16,14 @@ Page({
     that.setData({ loading: true })
 
     Promise.all([
-      request('/api/user/me').catch(() => null),
+      request('/api/users/me').catch(() => null),
       request('/api/vip/status').catch(() => null),
       request('/api/points/balance').catch(() => null),
-      request('/api/redeem/drinks/balance').catch(() => null),
     ])
       .then(resList => {
         const profile = resList[0]
         const vip = resList[1]
         const points = resList[2]
-        const drinks = resList[3]
 
         if (profile) setUserCache(profile)
 
@@ -41,10 +38,6 @@ Page({
           vipLabel,
           pointsBalance:
             points && typeof points.balance === 'number' ? points.balance : that.data.pointsBalance,
-          drinkQuantity:
-            drinks && typeof drinks.quantity === 'number'
-              ? drinks.quantity
-              : that.data.drinkQuantity,
         })
       })
       .finally(() => {

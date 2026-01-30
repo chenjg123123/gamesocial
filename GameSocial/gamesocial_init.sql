@@ -1,9 +1,17 @@
+-- GameSocial 初始化脚本：建库建表 + 预置演示数据（本地开发/调试用）。
+-- 说明：
+-- 1) 脚本尽量可重复执行：大多数对象使用 IF NOT EXISTS / ON DUPLICATE KEY UPDATE。
+-- 2) admin_user.password_hash 的 'CHANGE_ME' 只是占位，正式使用前需要替换为真实密码哈希。
+
+-- 创建数据库（utf8mb4 便于存中文昵称/表情等）。
 CREATE DATABASE IF NOT EXISTS gamesocial
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
 
+-- 选择业务库。
 USE gamesocial;
 
+-- user：小程序用户主表（openid 唯一）。
 CREATE TABLE IF NOT EXISTS `user` (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   openid VARCHAR(64) NOT NULL,
@@ -18,6 +26,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   KEY idx_user_unionid (unionid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- user_level：用户等级/经验表（与 user 一对一）。
 CREATE TABLE IF NOT EXISTS user_level (
   user_id BIGINT UNSIGNED NOT NULL,
   level INT NOT NULL DEFAULT 1,
@@ -27,6 +36,7 @@ CREATE TABLE IF NOT EXISTS user_level (
   CONSTRAINT fk_user_level_user FOREIGN KEY (user_id) REFERENCES `user`(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- vip_subscription：VIP 订阅记录（可用于月卡等）。
 CREATE TABLE IF NOT EXISTS vip_subscription (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id BIGINT UNSIGNED NOT NULL,
@@ -42,6 +52,7 @@ CREATE TABLE IF NOT EXISTS vip_subscription (
   CONSTRAINT fk_vip_subscription_user FOREIGN KEY (user_id) REFERENCES `user`(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- admin_user：后台管理员账号表（当前只预置一个管理员）。
 CREATE TABLE IF NOT EXISTS admin_user (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   username VARCHAR(64) NOT NULL,
@@ -53,6 +64,7 @@ CREATE TABLE IF NOT EXISTS admin_user (
   UNIQUE KEY uk_admin_user_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- admin_audit_log：管理员关键操作审计日志。
 CREATE TABLE IF NOT EXISTS admin_audit_log (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   admin_id BIGINT UNSIGNED NOT NULL,
@@ -68,6 +80,7 @@ CREATE TABLE IF NOT EXISTS admin_audit_log (
   CONSTRAINT fk_admin_audit_log_admin FOREIGN KEY (admin_id) REFERENCES admin_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- points_account：积分余额快照（用于快速展示）。
 CREATE TABLE IF NOT EXISTS points_account (
   user_id BIGINT UNSIGNED NOT NULL,
   balance BIGINT NOT NULL DEFAULT 0,
@@ -76,6 +89,7 @@ CREATE TABLE IF NOT EXISTS points_account (
   CONSTRAINT fk_points_account_user FOREIGN KEY (user_id) REFERENCES `user`(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- points_ledger：积分流水账本（用唯一键保证幂等）。
 CREATE TABLE IF NOT EXISTS points_ledger (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id BIGINT UNSIGNED NOT NULL,
@@ -91,6 +105,7 @@ CREATE TABLE IF NOT EXISTS points_ledger (
   CONSTRAINT fk_points_ledger_user FOREIGN KEY (user_id) REFERENCES `user`(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- goods：积分商品（饮品/毛巾等）。
 CREATE TABLE IF NOT EXISTS goods (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(128) NOT NULL,
@@ -104,6 +119,7 @@ CREATE TABLE IF NOT EXISTS goods (
   KEY idx_goods_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- user_drink_balance：用户可用饮品数量（总量，不区分品类）。
 CREATE TABLE IF NOT EXISTS user_drink_balance (
   user_id BIGINT UNSIGNED NOT NULL,
   quantity INT NOT NULL DEFAULT 0,
@@ -112,6 +128,7 @@ CREATE TABLE IF NOT EXISTS user_drink_balance (
   CONSTRAINT fk_user_drink_balance_user FOREIGN KEY (user_id) REFERENCES `user`(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- redeem_order：积分兑换商品订单（饮料兑换不走订单）。
 CREATE TABLE IF NOT EXISTS redeem_order (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   order_no VARCHAR(64) NOT NULL,
@@ -130,6 +147,7 @@ CREATE TABLE IF NOT EXISTS redeem_order (
   CONSTRAINT fk_redeem_order_used_by_admin FOREIGN KEY (used_by_admin_id) REFERENCES admin_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- redeem_order_item：兑换订单明细行。
 CREATE TABLE IF NOT EXISTS redeem_order_item (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   redeem_order_id BIGINT UNSIGNED NOT NULL,
@@ -142,6 +160,7 @@ CREATE TABLE IF NOT EXISTS redeem_order_item (
   CONSTRAINT fk_redeem_order_item_goods FOREIGN KEY (goods_id) REFERENCES goods(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- tournament：赛事表。
 CREATE TABLE IF NOT EXISTS tournament (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   title VARCHAR(128) NOT NULL,
@@ -160,6 +179,7 @@ CREATE TABLE IF NOT EXISTS tournament (
   CONSTRAINT fk_tournament_created_by_admin FOREIGN KEY (created_by_admin_id) REFERENCES admin_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- tournament_participant：赛事报名关系表（唯一约束防止重复报名）。
 CREATE TABLE IF NOT EXISTS tournament_participant (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   tournament_id BIGINT UNSIGNED NOT NULL,
@@ -173,6 +193,7 @@ CREATE TABLE IF NOT EXISTS tournament_participant (
   CONSTRAINT fk_tournament_participant_user FOREIGN KEY (user_id) REFERENCES `user`(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- tournament_result：赛事排名结果表（tournament_id + user_id 唯一）。
 CREATE TABLE IF NOT EXISTS tournament_result (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   tournament_id BIGINT UNSIGNED NOT NULL,
@@ -189,6 +210,7 @@ CREATE TABLE IF NOT EXISTS tournament_result (
   CONSTRAINT fk_tournament_result_published_by_admin FOREIGN KEY (published_by_admin_id) REFERENCES admin_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- tournament_award：赛事发奖记录（user_id + biz_id 唯一，用于幂等）。
 CREATE TABLE IF NOT EXISTS tournament_award (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   tournament_id BIGINT UNSIGNED NOT NULL,
@@ -205,6 +227,7 @@ CREATE TABLE IF NOT EXISTS tournament_award (
   CONSTRAINT fk_tournament_award_created_by_admin FOREIGN KEY (created_by_admin_id) REFERENCES admin_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- task_def：任务定义（每日/每周/每月）。
 CREATE TABLE IF NOT EXISTS task_def (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   task_code VARCHAR(64) NOT NULL,
@@ -221,6 +244,7 @@ CREATE TABLE IF NOT EXISTS task_def (
   KEY idx_task_def_period_type (period_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- user_task_progress：用户任务进度（user_id + task_id + period_key 唯一，用于同周期幂等更新）。
 CREATE TABLE IF NOT EXISTS user_task_progress (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id BIGINT UNSIGNED NOT NULL,
@@ -237,6 +261,7 @@ CREATE TABLE IF NOT EXISTS user_task_progress (
   CONSTRAINT fk_user_task_progress_task FOREIGN KEY (task_id) REFERENCES task_def(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- checkin_log：到店打卡明细。
 CREATE TABLE IF NOT EXISTS checkin_log (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id BIGINT UNSIGNED NOT NULL,
@@ -248,6 +273,7 @@ CREATE TABLE IF NOT EXISTS checkin_log (
   CONSTRAINT fk_checkin_log_user FOREIGN KEY (user_id) REFERENCES `user`(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 预置管理员账号（开发用）。
 INSERT INTO admin_user (id, username, password_hash, status, created_at, updated_at)
 VALUES (1, 'admin', 'CHANGE_ME', 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
@@ -256,6 +282,7 @@ ON DUPLICATE KEY UPDATE
   status = VALUES(status),
   updated_at = VALUES(updated_at);
 
+-- 预置任务定义（开发用）。
 INSERT INTO task_def (task_code, name, period_type, target_count, reward_points, status, rule_json, created_at)
 VALUES
   ('DAILY_CHECKIN', '到店打卡（每日）', 'DAILY', 1, 1, 1, NULL, NOW()),
@@ -269,6 +296,7 @@ ON DUPLICATE KEY UPDATE
   status = VALUES(status),
   rule_json = VALUES(rule_json);
 
+-- 预置演示用户（开发用）。
 INSERT INTO `user` (id, openid, unionid, nickname, avatar_url, status, created_at, updated_at)
 VALUES
   (1001, 'openid_u1001', NULL, '阿哲', 'https://example.com/avatar/u1001.png', 1, NOW(), NOW()),
@@ -283,6 +311,7 @@ ON DUPLICATE KEY UPDATE
   status = VALUES(status),
   updated_at = VALUES(updated_at);
 
+-- 预置等级数据（开发用）。
 INSERT INTO user_level (user_id, level, exp, updated_at)
 VALUES
   (1001, 3, 120, NOW()),
@@ -295,6 +324,7 @@ ON DUPLICATE KEY UPDATE
   exp = VALUES(exp),
   updated_at = VALUES(updated_at);
 
+-- 预置积分余额（开发用）。
 INSERT INTO points_account (user_id, balance, updated_at)
 VALUES
   (1001, 300, NOW()),
@@ -306,6 +336,7 @@ ON DUPLICATE KEY UPDATE
   balance = VALUES(balance),
   updated_at = VALUES(updated_at);
 
+-- 预置饮品数量（开发用）。
 INSERT INTO user_drink_balance (user_id, quantity, updated_at)
 VALUES
   (1001, 2, NOW()),
@@ -317,6 +348,7 @@ ON DUPLICATE KEY UPDATE
   quantity = VALUES(quantity),
   updated_at = VALUES(updated_at);
 
+-- 预置商品（开发用）。
 INSERT INTO goods (id, name, cover_url, points_price, stock, status, created_at)
 VALUES
   (2001, '饮料（兑换 +1 杯）', NULL, 50, 0, 1, NOW()),
@@ -330,6 +362,7 @@ ON DUPLICATE KEY UPDATE
   stock = VALUES(stock),
   status = VALUES(status);
 
+-- 预置积分流水（开发用，演示幂等键 biz_type + biz_id）。
 INSERT INTO points_ledger (user_id, change_amount, balance_after, biz_type, biz_id, remark, created_at)
 VALUES
   (1001, 300, 300, 'INIT', 'INIT-1001', '初始化积分', NOW()),
@@ -341,12 +374,14 @@ VALUES
 ON DUPLICATE KEY UPDATE
   remark = VALUES(remark);
 
+-- 预置管理员操作日志（开发用）。
 INSERT INTO admin_audit_log (admin_id, action, biz_type, biz_id, detail_json, created_at)
 VALUES
   (1, 'DRINK_USE', 'USER', '1001', JSON_OBJECT('user_id', 1001, 'delta', -1), NOW()),
   (1, 'POINTS_ADJUST', 'USER', '1004', JSON_OBJECT('user_id', 1004, 'delta', 50, 'reason', '线下活动奖励'), NOW()),
   (1, 'GOODS_REDEEM_USE', 'REDEEM_ORDER', 'R202601280001', JSON_OBJECT('order_no', 'R202601280001'), NOW());
 
+-- 预置兑换订单与明细（开发用）。
 INSERT INTO redeem_order (id, order_no, user_id, status, total_points, used_by_admin_id, used_at, created_at)
 VALUES
   (3001, 'R202601280001', 1002, 'USED', 200, 1, NOW(), NOW()),
@@ -362,6 +397,7 @@ VALUES
   (3001, 2002, 1, 200),
   (3002, 2003, 1, 120);
 
+-- 预置赛事、报名、排名与发奖（开发用）。
 INSERT INTO tournament (id, title, content, cover_url, start_at, end_at, status, created_by_admin_id, created_at, updated_at)
 VALUES
   (4001, '周末友谊赛', '周末店内友谊赛，欢迎报名', NULL, '2026-02-01 14:00:00', '2026-02-01 18:00:00', 'PUBLISHED', 1, NOW(), NOW()),
@@ -405,6 +441,7 @@ ON DUPLICATE KEY UPDATE
   award_points = VALUES(award_points),
   created_by_admin_id = VALUES(created_by_admin_id);
 
+-- 预置打卡记录（开发用）。
 INSERT INTO checkin_log (user_id, checkin_at, source)
 VALUES
   (1001, NOW(), 'MANUAL'),
@@ -413,6 +450,7 @@ VALUES
   (1004, NOW(), 'MANUAL'),
   (1005, NOW(), 'MANUAL');
 
+-- 预置任务进度（开发用）：给用户 1001 初始化一个月任务进度。
 INSERT INTO user_task_progress (user_id, task_id, period_key, progress_count, status, completed_at, rewarded_at)
 SELECT
   1001,

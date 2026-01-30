@@ -14,17 +14,13 @@
           <view class="val">{{pointsBalance}}</view>
           <view class="label">积分</view>
         </view>
-        <view class="stat">
-          <view class="val">{{drinkQuantity}}</view>
-          <view class="label">饮品</view>
-        </view>
       </view>
     </view>
 
     <view class="grid">
       <view class="grid-item" data-url="/pages/tournaments/tournaments" bindtap="switchTab">
         <view class="grid-title">赛事</view>
-        <view class="grid-sub">报名与成绩</view>
+        <view class="grid-sub">查看与报名</view>
       </view>
       <view class="grid-item" data-url="/pages/tasks/tasks" bindtap="switchTab">
         <view class="grid-title">任务</view>
@@ -32,7 +28,7 @@
       </view>
       <view class="grid-item" data-url="/pages/shop/shop" bindtap="switchTab">
         <view class="grid-title">兑换</view>
-        <view class="grid-sub">饮品/商品</view>
+        <view class="grid-sub">商品与订单</view>
       </view>
       <view class="grid-item" data-url="/pages/me/me" bindtap="switchTab">
         <view class="grid-title">我的</view>

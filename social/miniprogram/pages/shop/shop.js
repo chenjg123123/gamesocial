@@ -3,8 +3,6 @@ const { request } = require('../../utils/request')
 Page({
   data: {
     loading: false,
-    exchangeLoading: false,
-    drinkQuantity: 0,
     goods: [],
     orders: [],
   },
@@ -15,46 +13,55 @@ Page({
     const that = this
     that.setData({ loading: true })
     Promise.all([
-      request('/api/redeem/drinks/balance').catch(() => null),
-      request('/api/goods').catch(() => ({ items: [] })),
-      request('/api/redeem/orders?cursor=&limit=20').catch(() => ({ items: [] })),
+      request('/api/goods?offset=0&limit=50').catch(() => []),
+      request('/api/redeem/orders?offset=0&limit=20').catch(() => []),
     ])
       .then(resList => {
-        const drinks = resList[0]
-        const goods = resList[1] || { items: [] }
-        const orders = resList[2] || { items: [] }
+        const goods = resList[0]
+        const orders = resList[1]
         that.setData({
-          drinkQuantity: drinks && typeof drinks.quantity === 'number' ? drinks.quantity : 0,
-          goods: goods.items || [],
-          orders: orders.items || [],
+          goods: Array.isArray(goods) ? goods : (goods && goods.items) || [],
+          orders: Array.isArray(orders) ? orders : (orders && orders.items) || [],
         })
       })
       .finally(() => {
         that.setData({ loading: false })
       })
   },
-  exchangeDrink() {
-    const that = this
-    that.setData({ exchangeLoading: true })
-    request('/api/redeem/drinks/exchange', { method: 'POST' })
-      .then(res => {
-        that.setData({ drinkQuantity: res && typeof res.quantity === 'number' ? res.quantity : that.data.drinkQuantity })
-        wx.showToast({ title: '兑换成功', icon: 'success' })
-      })
-      .finally(() => {
-        that.setData({ exchangeLoading: false })
-      })
-  },
   redeemGoods(e) {
     const goodsId = Number(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id)
     if (!goodsId) return
-    request('/api/redeem/orders', { method: 'POST', data: { items: [{ goodsId: goodsId, quantity: 1 }] } }).then(order => {
-      wx.showModal({
-        title: '下单成功',
-        content: `订单号：${order && order.orderNo ? order.orderNo : ''}`,
-        showCancel: false,
+    const goods = (this.data.goods || []).find(g => Number(g && g.id) === goodsId)
+    const pointsPrice = goods && typeof goods.pointsPrice === 'number' ? goods.pointsPrice : NaN
+    if (!Number.isFinite(pointsPrice)) {
+      wx.showToast({ title: '商品价格异常', icon: 'none' })
+      return
+    }
+    const item = { goodsId: goodsId, quantity: 1, pointsPrice }
+    request('/api/redeem/orders', { method: 'POST', data: { items: [item] } })
+      .then(order => {
+        wx.showModal({
+          title: '下单成功',
+          content: `订单号：${order && order.orderNo ? order.orderNo : ''}`,
+          showCancel: false,
+        })
+        this.refresh()
       })
-      this.refresh()
+      .catch(err => wx.showToast({ title: (err && err.message) || '下单失败', icon: 'none' }))
+  },
+  cancelOrder(e) {
+    const id = Number(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id)
+    if (!id) return
+    wx.showModal({
+      title: '确认取消',
+      content: '取消该订单？',
+      success: res => {
+        if (!res.confirm) return
+        request(`/api/redeem/orders/${id}/cancel`, { method: 'PUT' }).then(() => {
+          wx.showToast({ title: '已取消', icon: 'success' })
+          this.refresh()
+        })
+      },
     })
   },
 })

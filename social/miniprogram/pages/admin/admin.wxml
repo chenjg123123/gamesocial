@@ -1,0 +1,148 @@
+<navigation-bar title="管理后台" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+<scroll-view class="scrollarea" scroll-y type="list">
+  <view class="page">
+    <view class="tabs card">
+      <button size="mini" type="{{tab === 'goods' ? 'primary' : 'default'}}" data-tab="goods" bindtap="switchTab">商品</button>
+      <button size="mini" type="{{tab === 'tournaments' ? 'primary' : 'default'}}" data-tab="tournaments" bindtap="switchTab">赛事</button>
+      <button size="mini" type="{{tab === 'taskDefs' ? 'primary' : 'default'}}" data-tab="taskDefs" bindtap="switchTab">任务</button>
+      <button size="mini" type="{{tab === 'users' ? 'primary' : 'default'}}" data-tab="users" bindtap="switchTab">用户</button>
+      <button size="mini" type="{{tab === 'orders' ? 'primary' : 'default'}}" data-tab="orders" bindtap="switchTab">订单</button>
+      <button size="mini" loading="{{loading}}" bindtap="refreshCurrent">刷新</button>
+    </view>
+
+    <view wx:if="{{tab === 'goods'}}" class="card">
+      <view class="card-title">商品管理</view>
+      <view class="form-row">
+        <input class="input" placeholder="商品名" value="{{goodsForm.name}}" bindinput="onGoodsName" />
+        <input class="input" placeholder="封面 coverUrl" value="{{goodsForm.coverUrl}}" bindinput="onGoodsCoverUrl" />
+        <input class="input" placeholder="积分价格 pointsPrice" value="{{goodsForm.pointsPrice}}" bindinput="onGoodsPoints" />
+        <input class="input" placeholder="库存 stock" value="{{goodsForm.stock}}" bindinput="onGoodsStock" />
+        <input class="input" placeholder="状态 status (1上架/0下架)" value="{{goodsForm.status}}" bindinput="onGoodsStatus" />
+      </view>
+      <view class="form-actions">
+        <button size="mini" type="primary" bindtap="submitGoods">{{goodsForm.id ? '更新' : '创建'}}</button>
+        <button size="mini" bindtap="resetGoodsForm">清空</button>
+      </view>
+      <view class="list-title">列表</view>
+      <view wx:if="{{goods.length === 0}}" class="empty">暂无数据</view>
+      <view wx:for="{{goods}}" wx:key="id" class="list-row">
+        <view class="row-main">
+          <view class="row-title">{{item.name}}</view>
+          <view class="row-sub">#{{item.id}} · {{item.pointsPrice}} 积分</view>
+        </view>
+        <view class="row-actions">
+          <button size="mini" data-id="{{item.id}}" bindtap="editGoods">编辑</button>
+          <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteGoods">删除</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{tab === 'tournaments'}}" class="card">
+      <view class="card-title">赛事管理</view>
+      <view class="form-row">
+        <input class="input" placeholder="标题" value="{{tournamentForm.title}}" bindinput="onTournamentTitle" />
+        <input class="input" placeholder="封面 coverUrl" value="{{tournamentForm.coverUrl}}" bindinput="onTournamentCoverUrl" />
+        <input class="input" placeholder="开始时间 startAt" value="{{tournamentForm.startAt}}" bindinput="onTournamentStartAt" />
+        <input class="input" placeholder="结束时间 endAt" value="{{tournamentForm.endAt}}" bindinput="onTournamentEndAt" />
+        <input class="input" placeholder="内容 content" value="{{tournamentForm.content}}" bindinput="onTournamentContent" />
+        <input class="input" placeholder="状态 status (DRAFT/PUBLISHED/FINISHED/CANCELED)" value="{{tournamentForm.status}}" bindinput="onTournamentStatus" />
+        <input class="input" placeholder="创建人 createdByAdminId" value="{{tournamentForm.createdByAdminId}}" bindinput="onTournamentCreatedBy" />
+      </view>
+      <view class="form-actions">
+        <button size="mini" type="primary" bindtap="submitTournament">{{tournamentForm.id ? '更新' : '创建'}}</button>
+        <button size="mini" bindtap="resetTournamentForm">清空</button>
+      </view>
+      <view class="list-title">列表</view>
+      <view wx:if="{{tournaments.length === 0}}" class="empty">暂无数据</view>
+      <view wx:for="{{tournaments}}" wx:key="id" class="list-row">
+        <view class="row-main">
+          <view class="row-title">{{item.title}}</view>
+          <view class="row-sub">#{{item.id}} · {{item.startAt}} - {{item.endAt}}</view>
+        </view>
+        <view class="row-actions">
+          <button size="mini" data-id="{{item.id}}" bindtap="editTournament">编辑</button>
+          <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteTournament">删除</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{tab === 'taskDefs'}}" class="card">
+      <view class="card-title">任务定义</view>
+      <view class="form-row">
+        <input class="input" placeholder="任务代码 taskCode" value="{{taskDefForm.taskCode}}" bindinput="onTaskDefCode" />
+        <input class="input" placeholder="任务名 name" value="{{taskDefForm.name}}" bindinput="onTaskDefName" />
+        <input class="input" placeholder="周期 periodType (DAILY/WEEKLY/MONTHLY)" value="{{taskDefForm.periodType}}" bindinput="onTaskDefPeriod" />
+        <input class="input" placeholder="目标次数 targetCount" value="{{taskDefForm.targetCount}}" bindinput="onTaskDefTarget" />
+        <input class="input" placeholder="奖励积分 rewardPoints" value="{{taskDefForm.rewardPoints}}" bindinput="onTaskDefReward" />
+        <input class="input" placeholder="状态 status (1启用/0停用)" value="{{taskDefForm.status}}" bindinput="onTaskDefStatus" />
+      </view>
+      <view class="form-actions">
+        <button size="mini" type="primary" bindtap="submitTaskDef">{{taskDefForm.id ? '更新' : '创建'}}</button>
+        <button size="mini" bindtap="resetTaskDefForm">清空</button>
+      </view>
+      <view class="list-title">列表</view>
+      <view wx:if="{{taskDefs.length === 0}}" class="empty">暂无数据</view>
+      <view wx:for="{{taskDefs}}" wx:key="id" class="list-row">
+        <view class="row-main">
+          <view class="row-title">{{item.name}}</view>
+          <view class="row-sub">#{{item.id}} · {{item.periodType}} · {{item.targetCount}} 次 · 奖励 {{item.rewardPoints}}</view>
+        </view>
+        <view class="row-actions">
+          <button size="mini" data-id="{{item.id}}" bindtap="editTaskDef">编辑</button>
+          <button size="mini" type="warn" data-id="{{item.id}}" bindtap="deleteTaskDef">删除</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{tab === 'users'}}" class="card">
+      <view class="card-title">用户管理</view>
+      <view class="form-row">
+        <input class="input" disabled placeholder="用户ID（点列表编辑）" value="{{userForm.id}}" />
+        <input class="input" placeholder="昵称 nickname" value="{{userForm.nickname}}" bindinput="onUserNickname" />
+        <input class="input" placeholder="头像 avatarUrl" value="{{userForm.avatarUrl}}" bindinput="onUserAvatarUrl" />
+        <input class="input" placeholder="状态 status (1正常/0禁用)" value="{{userForm.status}}" bindinput="onUserStatus" />
+      </view>
+      <view class="form-actions">
+        <button size="mini" type="primary" bindtap="submitUser">更新</button>
+        <button size="mini" bindtap="resetUserForm">清空</button>
+      </view>
+      <view class="list-title">列表</view>
+      <view wx:if="{{users.length === 0}}" class="empty">暂无数据</view>
+      <view wx:for="{{users}}" wx:key="id" class="list-row">
+        <view class="row-main">
+          <view class="row-title">{{item.nickname || '-'}}</view>
+          <view class="row-sub">#{{item.id}} · status={{item.status}}</view>
+        </view>
+        <view class="row-actions">
+          <button size="mini" data-id="{{item.id}}" bindtap="editUser">编辑</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{tab === 'orders'}}" class="card">
+      <view class="card-title">兑换订单</view>
+      <view class="form-row">
+        <input class="input" placeholder="userId" value="{{orderForm.userId}}" bindinput="onOrderUserId" />
+        <input class="input" placeholder="goodsId" value="{{orderForm.goodsId}}" bindinput="onOrderGoodsId" />
+        <input class="input" placeholder="数量 quantity" value="{{orderForm.quantity}}" bindinput="onOrderQuantity" />
+        <input class="input" placeholder="单价 pointsPrice" value="{{orderForm.pointsPrice}}" bindinput="onOrderPointsPrice" />
+      </view>
+      <view class="form-actions">
+        <button size="mini" type="primary" bindtap="submitOrder">创建订单</button>
+        <button size="mini" bindtap="resetOrderForm">清空</button>
+      </view>
+      <view class="list-title">列表</view>
+      <view wx:if="{{orders.length === 0}}" class="empty">暂无数据</view>
+      <view wx:for="{{orders}}" wx:key="id" class="list-row">
+        <view class="row-main">
+          <view class="row-title">{{item.orderNo || ('#' + item.id)}}</view>
+          <view class="row-sub">{{item.status}} · user={{item.userId}} · {{item.createdAt}}</view>
+        </view>
+        <view class="row-actions">
+          <button size="mini" type="primary" data-id="{{item.id}}" bindtap="useOrder">核销</button>
+          <button size="mini" data-id="{{item.id}}" bindtap="cancelOrder">取消</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</scroll-view>

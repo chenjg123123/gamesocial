@@ -7,7 +7,7 @@
     </view>
 
     <view wx:if="{{items.length === 0}}" class="empty">暂无任务</view>
-    <view wx:for="{{items}}" wx:key="id" class="card">
+    <view wx:for="{{items}}" wx:key="taskCode" class="card">
       <view class="row">
         <view class="left">
           <view class="title">{{item.name}}</view>
@@ -17,9 +17,9 @@
           <button
             size="mini"
             type="primary"
-            disabled="{{!item.canReward}}"
-            data-id="{{item.id}}"
-            bindtap="reward"
+            disabled="{{!(item.canClaim || item.canReward)}}"
+            data-code="{{item.taskCode || item.id}}"
+            bindtap="claim"
           >
             领取
           </button>

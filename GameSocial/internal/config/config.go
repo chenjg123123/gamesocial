@@ -1,3 +1,4 @@
+// config 负责加载与校验应用运行配置（来自环境变量与 .env 文件）。
 package config
 
 import (
@@ -9,26 +10,40 @@ import (
 )
 
 type Config struct {
-	// ServerPort 是 HTTP 服务监听端口。
+	// ServerPort: HTTP 服务监听端口。
 	ServerPort int
 
-	// DBEnabled 控制是否初始化 MySQL。
+	// DBEnabled: 是否启用数据库（false 时应用会跳过 DB 初始化）。
 	DBEnabled bool
-	// DBDSN 设置后将覆盖 DBHost/DBPort/DBUser/DBPassword/DBName 的组合方式。
-	DBDSN      string
+	// DBDSN: 完整 DSN；为空时会由 DBHost/DBPort/DBUser/DBPassword/DBName 组合生成。
+	DBDSN string
+	// DBHost/DBPort/DBUser/DBPassword/DBName: 生成 DSN 所需的各项参数。
 	DBHost     string
 	DBPort     int
 	DBUser     string
 	DBPassword string
 	DBName     string
 
-	// MediaDir 是媒体文件本地存储目录（预留）。
+	// MediaDir: 本地媒体文件保存目录（后续可用于赛事封面/商品封面上传）。
 	MediaDir string
-	// BaseURL 在需要时用于拼接绝对 URL。
+	// BaseURL: 对外访问的基础地址（后续可用于拼接媒体访问 URL 等）。
 	BaseURL string
+
+	// WechatAppID/WechatAppSecret: 微信小程序的 appid/secret，用于 code2session 换取 openid。
+	WechatAppID     string
+	WechatAppSecret string
+
+	// AuthTokenSecret: 用户 token 签名密钥（自定义 HMAC token）；需要自行设置为随机长字符串。
+	AuthTokenSecret string
+	// AuthTokenTTLSeconds: token 有效期（秒）。
+	AuthTokenTTLSeconds int64
 }
 
-// LoadConfig 从环境变量与可选的 .env 文件加载配置。
+// LoadConfig 加载应用配置。
+// 加载顺序：
+// 1) 如果设置了 ENV_FILE，则从该文件加载（仅对未设置的环境变量做补充）。
+// 2) 否则向上查找 .env 并加载（同样只补充未设置的环境变量）。
+// 3) 最终从环境变量读取配置并做基础校验。
 func LoadConfig() (Config, error) {
 	envFile := os.Getenv("ENV_FILE")
 	if envFile != "" {
@@ -42,16 +57,20 @@ func LoadConfig() (Config, error) {
 	}
 
 	cfg := Config{
-		ServerPort: mustInt(getenv("SERVER_PORT", "8080")),
-		DBDSN:      os.Getenv("DB_DSN"),
-		DBEnabled:  mustBool(getenv("DB_ENABLED", "true")),
-		DBHost:     getenv("DB_HOST", "127.0.0.1"),
-		DBPort:     mustInt(getenv("DB_PORT", "3306")),
-		DBUser:     getenv("DB_USER", "root"),
-		DBPassword: os.Getenv("DB_PASSWORD"),
-		DBName:     getenv("DB_NAME", "gamesocial"),
-		MediaDir:   getenv("MEDIA_DIR", "./data/media"),
-		BaseURL:    getenv("BASE_URL", "http://localhost:8080"),
+		ServerPort:          mustInt(getenv("SERVER_PORT", "8080")),
+		DBDSN:               os.Getenv("DB_DSN"),
+		DBEnabled:           mustBool(getenv("DB_ENABLED", "true")),
+		DBHost:              getenv("DB_HOST", "127.0.0.1"),
+		DBPort:              mustInt(getenv("DB_PORT", "3306")),
+		DBUser:              getenv("DB_USER", "root"),
+		DBPassword:          os.Getenv("DB_PASSWORD"),
+		DBName:              getenv("DB_NAME", "gamesocial"),
+		MediaDir:            getenv("MEDIA_DIR", "./data/media"),
+		BaseURL:             getenv("BASE_URL", "http://localhost:8080"),
+		WechatAppID:         os.Getenv("WECHAT_APP_ID"),
+		WechatAppSecret:     os.Getenv("WECHAT_APP_SECRET"),
+		AuthTokenSecret:     os.Getenv("AUTH_TOKEN_SECRET"),
+		AuthTokenTTLSeconds: mustInt64(getenv("AUTH_TOKEN_TTL_SECONDS", "604800")),
 	}
 
 	if cfg.ServerPort <= 0 {
@@ -60,12 +79,15 @@ func LoadConfig() (Config, error) {
 	if cfg.DBPort <= 0 {
 		return Config{}, fmt.Errorf("invalid DB_PORT")
 	}
+	if cfg.AuthTokenTTLSeconds <= 0 {
+		return Config{}, fmt.Errorf("invalid AUTH_TOKEN_TTL_SECONDS")
+	}
 
 	return cfg, nil
 }
 
+// findUpwards 从当前工作目录开始向上查找指定文件（最多 8 层），用于在本地开发时自动发现 .env。
 func findUpwards(filename string) (string, error) {
-	// findUpwards 从当前目录向上查找，返回第一个匹配到的文件路径。
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -84,8 +106,8 @@ func findUpwards(filename string) (string, error) {
 	return "", fmt.Errorf("%s not found", filename)
 }
 
+// getenv 读取环境变量；为空时返回 fallback。
 func getenv(key, fallback string) string {
-	// getenv 读取环境变量；未设置或为空时返回 fallback。
 	v := os.Getenv(key)
 	if v == "" {
 		return fallback
@@ -93,8 +115,8 @@ func getenv(key, fallback string) string {
 	return v
 }
 
+// mustInt 将字符串转为 int；解析失败时返回 0（上层再进行范围校验）。
 func mustInt(v string) int {
-	// mustInt 将字符串转为 int；失败时返回 0。
 	n, err := strconv.Atoi(v)
 	if err != nil {
 		return 0
@@ -102,8 +124,17 @@ func mustInt(v string) int {
 	return n
 }
 
+// mustInt64 将字符串转为 int64；解析失败时返回 0。
+func mustInt64(v string) int64 {
+	n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// mustBool 将字符串转为 bool；解析失败时返回 false。
 func mustBool(v string) bool {
-	// mustBool 解析 bool；失败时返回 false。
 	b, err := strconv.ParseBool(strings.TrimSpace(v))
 	if err != nil {
 		return false

@@ -4,7 +4,6 @@ Page({
   data: {
     loading: false,
     items: [],
-    results: [],
   },
   onShow() {
     this.refresh()
@@ -12,17 +11,13 @@ Page({
   refresh() {
     const that = this
     that.setData({ loading: true })
-    Promise.all([
-      request('/api/tournaments').catch(() => ({ items: [] })),
-      request('/api/tournaments/my/results').catch(() => ({ items: [] })),
-    ])
-      .then(resList => {
-        const tournaments = resList[0] || { items: [] }
-        const results = resList[1] || { items: [] }
-        that.setData({
-          items: tournaments.items || [],
-          results: results.items || [],
-        })
+    request('/api/tournaments?offset=0&limit=50')
+      .then(res => {
+        const items = Array.isArray(res) ? res : (res && res.items) || []
+        that.setData({ items })
+      })
+      .catch(() => {
+        that.setData({ items: [] })
       })
       .finally(() => {
         that.setData({ loading: false })
@@ -31,12 +26,16 @@ Page({
   join(e) {
     const id = Number(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id)
     if (!id) return
-    request(`/api/tournaments/${id}/join`, { method: 'POST' }).then(() => this.refresh())
+    request(`/api/tournaments/${id}/join`, { method: 'POST' })
+      .then(() => this.refresh())
+      .catch(err => wx.showToast({ title: (err && err.message) || '报名失败', icon: 'none' }))
   },
   cancelJoin(e) {
     const id = Number(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id)
     if (!id) return
-    request(`/api/tournaments/${id}/join`, { method: 'DELETE' }).then(() => this.refresh())
+    request(`/api/tournaments/${id}/cancel`, { method: 'PUT' })
+      .then(() => this.refresh())
+      .catch(err => wx.showToast({ title: (err && err.message) || '取消失败', icon: 'none' }))
   },
 })
 
