@@ -1,0 +1,101 @@
+page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f6f7f8;
+}
+.scrollarea {
+  flex: 1;
+  overflow-y: hidden;
+}
+
+.page {
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: #eee;
+}
+
+.info {
+  flex: 1;
+}
+
+.name {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #111;
+}
+
+.sub {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.stats {
+  display: flex;
+  margin-top: 18rpx;
+  border-top: 1rpx solid rgba(0, 0, 0, 0.06);
+  padding-top: 18rpx;
+}
+
+.stat {
+  flex: 1;
+  text-align: center;
+}
+
+.val {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #111;
+}
+
+.label {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #666;
+}
+
+.grid {
+  margin-top: 24rpx;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+}
+
+.grid-item {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.grid-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #111;
+}
+
+.grid-sub {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #666;
+}

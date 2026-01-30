@@ -1,0 +1,119 @@
+page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f6f7f8;
+}
+
+.scrollarea {
+  flex: 1;
+  overflow-y: hidden;
+}
+
+.page {
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.avatar-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: #eee;
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.nickname {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111;
+  padding: 0;
+}
+
+.idline {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #666;
+}
+
+.profile-actions {
+  margin-top: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #111;
+  margin: 24rpx 0 18rpx;
+}
+
+.empty {
+  color: #666;
+  font-size: 24rpx;
+  padding: 18rpx 0 30rpx;
+}
+
+.ledger-row {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14rpx;
+}
+
+.ledger-type {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #111;
+}
+
+.ledger-sub {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #666;
+}
+
+.ledger-right {
+  text-align: right;
+}
+
+.ledger-change {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #111;
+}
+
+.ledger-balance {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #666;
+}
+

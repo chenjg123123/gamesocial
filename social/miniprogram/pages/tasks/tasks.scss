@@ -1,0 +1,60 @@
+page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f6f7f8;
+}
+
+.scrollarea {
+  flex: 1;
+  overflow-y: hidden;
+}
+
+.page {
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.top-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 18rpx;
+}
+
+.empty {
+  color: #666;
+  font-size: 24rpx;
+  padding: 18rpx 0 30rpx;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  box-sizing: border-box;
+  margin-bottom: 14rpx;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.left {
+  flex: 1;
+}
+
+.title {
+  font-size: 28rpx;
+  color: #111;
+  font-weight: 600;
+}
+
+.sub {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #666;
+}
+

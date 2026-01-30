@@ -1,0 +1,36 @@
+<navigation-bar title="我的" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<scroll-view class="scrollarea" scroll-y type="list">
+  <view class="page">
+    <view class="profile card">
+      <view class="row">
+        <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+          <image class="avatar" src="{{avatarUrl || ''}}" mode="aspectFill"></image>
+        </button>
+        <view class="profile-info">
+          <input class="nickname" placeholder="请输入昵称" value="{{nickname}}" bindinput="onNicknameInput" />
+          <view class="idline">用户ID：{{userId || '-'}}</view>
+        </view>
+      </view>
+      <view class="profile-actions">
+        <button size="mini" type="primary" bindtap="saveProfile" loading="{{saving}}">保存资料</button>
+        <button size="mini" bindtap="relogin" loading="{{reloginLoading}}">重新登录</button>
+        <button size="mini" type="warn" bindtap="doLogout">退出</button>
+      </view>
+    </view>
+
+    <view class="section-title">积分流水</view>
+    <view wx:if="{{ledger.length === 0}}" class="empty">暂无流水</view>
+    <view wx:for="{{ledger}}" wx:key="id" class="ledger-row">
+      <view class="ledger-left">
+        <view class="ledger-type">{{item.bizType}}</view>
+        <view class="ledger-sub">{{item.createdAt}}</view>
+      </view>
+      <view class="ledger-right">
+        <view class="ledger-change">{{item.changeAmount}}</view>
+        <view class="ledger-balance">余额 {{item.balanceAfter}}</view>
+      </view>
+    </view>
+    <button wx:if="{{nextCursor}}" size="mini" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
+  </view>
+</scroll-view>
+

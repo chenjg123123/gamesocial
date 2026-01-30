@@ -1,0 +1,44 @@
+# 用编辑器创建.gitignore（mac/Linux）
+touch .gitignore
+# 或Windows（直接新建文件命名为.gitignore，注意前面的点）
+
+# 编辑.gitignore内容（核心过滤规则）
+cat > .gitignore << EOF
+# Go 后端忽略
+# 编译后的二进制文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# Go模块缓存
+vendor/
+# Go构建缓存
+go.sum
+# 临时文件
+*.tmp
+# IDE配置（如VSCode）
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# JS 前端忽略
+# node_modules依赖（核心！）
+node_modules/
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# 构建产物
+dist/
+build/
+# 日志文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# 缓存文件
+.DS_Store
+EOF
