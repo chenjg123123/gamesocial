@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// Middleware 是对 http.Handler 的装饰器：输入一个 handler，输出包裹后的 handler。
 type Middleware func(http.Handler) http.Handler
 
 // Chain 将多个中间件按传入顺序组合起来，返回最终的 http.Handler。

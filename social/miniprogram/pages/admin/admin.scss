@@ -1,89 +1,85 @@
-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f6f7f8;
-}
-
 .scrollarea {
   flex: 1;
   overflow-y: hidden;
 }
 
 .page {
-  padding: 24rpx;
+  padding: var(--spacing-md);
   box-sizing: border-box;
 }
 
 .card {
-  background: #fff;
-  border-radius: 16rpx;
+  /* Global card */
   padding: 24rpx;
-  box-sizing: border-box;
-  margin-bottom: 16rpx;
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
 }
 
 .tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: var(--spacing-sm);
 }
 
 .card-title {
   font-weight: 600;
-  margin-bottom: 16rpx;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-main);
 }
 
 .form-row {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: var(--spacing-sm);
 }
 
 .input {
-  border: 1px solid #e5e5e5;
-  border-radius: 12rpx;
-  padding: 16rpx;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
   font-size: 28rpx;
+  color: var(--text-main);
 }
 
 .form-actions {
   display: flex;
-  gap: 12rpx;
-  margin-top: 16rpx;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
 }
 
 .list-title {
-  margin-top: 24rpx;
-  margin-bottom: 12rpx;
-  color: #666;
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-secondary);
 }
 
 .list-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 16rpx 0;
-  border-top: 1px solid #f0f0f0;
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--border-color);
 }
 
 .row-title {
   font-weight: 500;
+  color: var(--text-main);
 }
 
 .row-sub {
-  color: #888;
+  color: var(--text-secondary);
   font-size: 24rpx;
-  margin-top: 6rpx;
+  margin-top: var(--spacing-xs);
 }
 
 .row-actions {
   display: flex;
-  gap: 12rpx;
+  gap: var(--spacing-sm);
   flex-shrink: 0;
 }
 
 .empty {
-  color: #999;
-  padding: 16rpx 0;
+  color: var(--text-placeholder);
+  padding: var(--spacing-sm) 0;
 }

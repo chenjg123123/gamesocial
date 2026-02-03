@@ -39,6 +39,7 @@ type CreateOrderRequest struct {
 	Items  []CreateOrderItemInput `json:"items"`
 }
 
+// CreateOrderItemInput 表示创建订单时的单条兑换明细入参。
 type CreateOrderItemInput struct {
 	GoodsID     uint64 `json:"goodsId"`
 	Quantity    int    `json:"quantity"`
@@ -71,6 +72,7 @@ func NewService(db *sql.DB) Service {
 	return &service{db: db}
 }
 
+// CreateOrder 创建兑换订单并返回订单详情（包含 items）。
 func (s *service) CreateOrder(ctx context.Context, req CreateOrderRequest) (RedeemOrder, error) {
 	// 1) 基础校验：必须有用户与至少一条明细。
 	if s.db == nil {
@@ -142,6 +144,7 @@ func (s *service) CreateOrder(ctx context.Context, req CreateOrderRequest) (Rede
 	return s.GetOrder(ctx, uint64(id))
 }
 
+// GetOrder 获取兑换订单详情（包含 items）。
 func (s *service) GetOrder(ctx context.Context, id uint64) (RedeemOrder, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -203,6 +206,7 @@ func (s *service) GetOrder(ctx context.Context, id uint64) (RedeemOrder, error) 
 	return o, nil
 }
 
+// ListOrders 获取兑换订单列表（不包含 items）。
 func (s *service) ListOrders(ctx context.Context, req ListOrderRequest) ([]RedeemOrder, error) {
 	// 1) 基础校验与分页兜底。
 	if s.db == nil {
@@ -263,6 +267,7 @@ func (s *service) ListOrders(ctx context.Context, req ListOrderRequest) ([]Redee
 	return out, nil
 }
 
+// UseOrder 核销兑换订单（CREATED -> USED）并返回最新订单详情。
 func (s *service) UseOrder(ctx context.Context, id uint64, adminID uint64) (RedeemOrder, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -291,6 +296,7 @@ func (s *service) UseOrder(ctx context.Context, id uint64, adminID uint64) (Rede
 	return s.GetOrder(ctx, id)
 }
 
+// CancelOrder 取消兑换订单（CREATED -> CANCELED）并返回最新订单详情。
 func (s *service) CancelOrder(ctx context.Context, id uint64) (RedeemOrder, error) {
 	// 1) 基础校验。
 	if s.db == nil {

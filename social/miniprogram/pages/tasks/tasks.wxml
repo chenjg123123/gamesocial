@@ -1,27 +1,50 @@
-<navigation-bar title="任务" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<navigation-bar title="任务中心" back="{{false}}" color="black" background="#FFF"></navigation-bar>
 <scroll-view class="scrollarea" scroll-y type="list">
   <view class="page">
-    <view class="top-actions">
-      <button type="primary" size="mini" bindtap="doCheckin" loading="{{checkinLoading}}">到店打卡</button>
-      <button size="mini" bindtap="refresh" loading="{{loading}}">刷新</button>
+    <view class="hero-section">
+      <view class="hero-content">
+        <view class="h1">每日任务</view>
+        <view class="body-text">完成任务，积攒积分</view>
+      </view>
+      <button class="checkin-btn" bindtap="doCheckin" loading="{{checkinLoading}}">
+        <text class="checkin-icon">📍</text>
+        <text>到店打卡</text>
+      </button>
     </view>
 
-    <view wx:if="{{items.length === 0}}" class="empty">暂无任务</view>
-    <view wx:for="{{items}}" wx:key="taskCode" class="card">
-      <view class="row">
-        <view class="left">
-          <view class="title">{{item.name}}</view>
-          <view class="sub">{{item.periodType}} · {{item.progressCount}}/{{item.targetCount}} · 奖励{{item.rewardPoints}}积分</view>
+    <view wx:if="{{items.length === 0}}" class="empty-state">
+      <view class="empty-icon">📝</view>
+      <view class="empty-text">今日任务已全部完成</view>
+      <button size="mini" bindtap="refresh" loading="{{loading}}">刷新列表</button>
+    </view>
+
+    <view class="task-list">
+      <view wx:for="{{items}}" wx:key="taskCode" class="task-card {{item.status === 'completed' ? 'completed' : ''}}">
+        <view class="task-left">
+          <view class="task-icon-wrapper">
+             <text class="task-icon">🎯</text>
+          </view>
+          <view class="task-info">
+            <view class="task-title">{{item.name}}</view>
+            <view class="task-progress-bar">
+              <view class="progress-fill" style="width: {{item.progressCount / item.targetCount * 100}}%"></view>
+            </view>
+            <view class="task-meta">
+              <text class="task-type">{{item.periodType}}</text>
+              <text class="task-count">{{item.progressCount}}/{{item.targetCount}}</text>
+              <text class="task-reward">+{{item.rewardPoints}} 积分</text>
+            </view>
+          </view>
         </view>
-        <view class="right">
+        
+        <view class="task-right">
           <button
-            size="mini"
-            type="primary"
+            class="claim-btn"
             disabled="{{!(item.canClaim || item.canReward)}}"
             data-code="{{item.taskCode || item.id}}"
             bindtap="claim"
           >
-            领取
+            {{item.canClaim || item.canReward ? '领取' : '未完成'}}
           </button>
         </view>
       </view>

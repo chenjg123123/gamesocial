@@ -6,11 +6,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"gamesocial/internal/wechat"
 )
 
+// User 表示 auth 模块在登录场景下返回的用户信息（最小字段集）。
 type User struct {
 	ID        uint64 `json:"id"`
 	OpenID    string `json:"openId"`
@@ -20,11 +22,13 @@ type User struct {
 	Status    int    `json:"status"`
 }
 
+// LoginResult 表示登录成功后的返回：token 与用户信息。
 type LoginResult struct {
 	Token string `json:"token"`
 	User  User   `json:"user"`
 }
 
+// Service 定义 auth 模块对外提供的业务接口。
 type Service interface {
 	WechatLogin(ctx context.Context, code string) (LoginResult, error)
 }
@@ -36,6 +40,7 @@ type service struct {
 	tokenTTL     time.Duration
 }
 
+// NewService 创建 auth 模块服务。
 func NewService(db *sql.DB, wechatClient *wechat.Client, tokenSecret string, tokenTTLSeconds int64) Service {
 	return &service{
 		db:           db,
@@ -45,7 +50,9 @@ func NewService(db *sql.DB, wechatClient *wechat.Client, tokenSecret string, tok
 	}
 }
 
+// WechatLogin 使用小程序 wx.login() 的 code 完成登录并签发 token。
 func (s *service) WechatLogin(ctx context.Context, code string) (LoginResult, error) {
+	log.Printf("WechatLogin: code=%s", code)
 	if s.wechatClient == nil {
 		return LoginResult{}, errors.New("wechat client is nil")
 	}

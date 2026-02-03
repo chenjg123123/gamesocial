@@ -69,6 +69,7 @@ func NewService(db *sql.DB) Service {
 	return &service{db: db}
 }
 
+// CreateTaskDef 创建任务定义并返回创建后的详情。
 func (s *service) CreateTaskDef(ctx context.Context, req CreateTaskDefRequest) (TaskDef, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -112,6 +113,7 @@ func (s *service) CreateTaskDef(ctx context.Context, req CreateTaskDefRequest) (
 	return s.GetTaskDef(ctx, uint64(id))
 }
 
+// UpdateTaskDef 更新任务定义并返回更新后的详情。
 func (s *service) UpdateTaskDef(ctx context.Context, id uint64, req UpdateTaskDefRequest) (TaskDef, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -156,6 +158,7 @@ func (s *service) UpdateTaskDef(ctx context.Context, id uint64, req UpdateTaskDe
 	return s.GetTaskDef(ctx, id)
 }
 
+// DeleteTaskDef 软删除任务定义（status=0）。
 func (s *service) DeleteTaskDef(ctx context.Context, id uint64) error {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -181,6 +184,7 @@ func (s *service) DeleteTaskDef(ctx context.Context, id uint64) error {
 	return nil
 }
 
+// GetTaskDef 获取任务定义详情。
 func (s *service) GetTaskDef(ctx context.Context, id uint64) (TaskDef, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -211,6 +215,7 @@ func (s *service) GetTaskDef(ctx context.Context, id uint64) (TaskDef, error) {
 	return td, nil
 }
 
+// ListTaskDef 获取任务定义列表。
 func (s *service) ListTaskDef(ctx context.Context, req ListTaskDefRequest) ([]TaskDef, error) {
 	// 1) 基础校验与分页兜底。
 	if s.db == nil {

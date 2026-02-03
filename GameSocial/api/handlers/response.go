@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// APIResponse 是后端统一的 JSON 响应结构。
 type APIResponse struct {
 	Code BizCode `json:"code"`
 	// Data: 业务返回数据（成功时使用；omitempty 避免空值输出）。
@@ -21,6 +22,7 @@ func SendJSON(w http.ResponseWriter, status int, payload APIResponse) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
+// SendJSuccess 返回业务成功响应（HTTP 200 + CodeOK）。
 func SendJSuccess(w http.ResponseWriter, data any) {
 	SendJSON(w, http.StatusOK, APIResponse{
 		Code:    CodeOK,
@@ -29,6 +31,7 @@ func SendJSuccess(w http.ResponseWriter, data any) {
 	})
 }
 
+// SendJBizFail 返回业务失败响应（HTTP 200 + CodeBizNotDone）。
 func SendJBizFail(w http.ResponseWriter, message string) {
 	if message == "" {
 		message = CodeBizNotDone.DefaultMessage()
@@ -39,6 +42,7 @@ func SendJBizFail(w http.ResponseWriter, message string) {
 	})
 }
 
+// SendJError 返回系统错误响应（HTTP 非 200 + 指定业务码）。
 func SendJError(w http.ResponseWriter, httpStatus int, code BizCode, message string) {
 	if message == "" {
 		message = code.DefaultMessage()

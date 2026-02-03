@@ -25,6 +25,7 @@ import (
 	"gamesocial/modules/user"
 )
 
+// App 聚合服务运行所需的配置与各业务模块依赖。
 type App struct {
 	// Config: 运行时配置（端口、DB 开关等）。
 	Config config.Config

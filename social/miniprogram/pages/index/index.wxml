@@ -1,38 +1,63 @@
-<navigation-bar title="格斗玩家社区" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<navigation-bar title="格斗玩家社区" back="{{false}}" color="white" background="transparent"></navigation-bar>
 <scroll-view class="scrollarea" scroll-y type="list">
-  <view class="page">
-    <view class="card">
-      <view class="row">
-        <image class="avatar" src="{{user.avatarUrl || ''}}" mode="aspectFill"></image>
-        <view class="info">
-          <view class="name">{{user.nickname || '未设置昵称'}}</view>
-          <view class="sub">{{vipLabel}}</view>
-        </view>
+  <view class="header-section">
+    <view class="user-row">
+      <image class="avatar" src="{{user.avatarUrl || ''}}" mode="aspectFill"></image>
+      <view class="user-info">
+        <view class="greeting">Welcome Back,</view>
+        <view class="name">{{user.nickname || '未设置昵称'}}</view>
+        <view class="vip-tag">{{vipLabel}}</view>
+        <button wx:if="{{!user.nickname}}" class="login-btn" bindtap="authorizeLogin">授权登录</button>
       </view>
-      <view class="stats">
-        <view class="stat">
-          <view class="val">{{pointsBalance}}</view>
-          <view class="label">积分</view>
-        </view>
+    </view>
+  </view>
+
+  <view class="page-body">
+    <!-- Floating Stats Card -->
+    <view class="stats-card">
+      <view class="stat-item">
+        <view class="stat-label">当前积分</view>
+        <view class="stat-val">{{pointsBalance}}</view>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item" bindtap="switchTab" data-url="/pages/shop/shop">
+        <view class="stat-label">去兑换</view>
+        <view class="stat-action">Shop ></view>
       </view>
     </view>
 
+    <view class="section-header">
+      <text class="h3">探索</text>
+    </view>
+
     <view class="grid">
-      <view class="grid-item" data-url="/pages/tournaments/tournaments" bindtap="switchTab">
-        <view class="grid-title">赛事</view>
-        <view class="grid-sub">查看与报名</view>
+      <view class="grid-item primary" data-url="/pages/tournaments/tournaments" bindtap="switchTab">
+        <view class="grid-icon">🥊</view>
+        <view class="grid-info">
+          <view class="grid-title">热门赛事</view>
+          <view class="grid-sub">查看赛程与报名</view>
+        </view>
       </view>
-      <view class="grid-item" data-url="/pages/tasks/tasks" bindtap="switchTab">
-        <view class="grid-title">任务</view>
-        <view class="grid-sub">打卡领奖</view>
+      <view class="grid-item secondary" data-url="/pages/tasks/tasks" bindtap="switchTab">
+        <view class="grid-icon">📝</view>
+        <view class="grid-info">
+          <view class="grid-title">每日任务</view>
+          <view class="grid-sub">完成打卡领积分</view>
+        </view>
       </view>
-      <view class="grid-item" data-url="/pages/shop/shop" bindtap="switchTab">
-        <view class="grid-title">兑换</view>
-        <view class="grid-sub">商品与订单</view>
+      <view class="grid-item accent" data-url="/pages/shop/shop" bindtap="switchTab">
+        <view class="grid-icon">🎁</view>
+        <view class="grid-info">
+          <view class="grid-title">积分兑换</view>
+          <view class="grid-sub">好礼等你来拿</view>
+        </view>
       </view>
-      <view class="grid-item" data-url="/pages/me/me" bindtap="switchTab">
-        <view class="grid-title">我的</view>
-        <view class="grid-sub">资料与流水</view>
+      <view class="grid-item info" data-url="/pages/me/me" bindtap="switchTab">
+        <view class="grid-icon">👤</view>
+        <view class="grid-info">
+          <view class="grid-title">个人中心</view>
+          <view class="grid-sub">管理资料与流水</view>
+        </view>
       </view>
     </view>
   </view>

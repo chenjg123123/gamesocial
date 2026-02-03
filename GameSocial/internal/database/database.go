@@ -11,6 +11,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// DBConfig 描述 MySQL 连接所需的配置项。
 type DBConfig struct {
 	// DSN: 完整 DSN（优先使用）；为空则用其它字段拼接生成。
 	DSN string

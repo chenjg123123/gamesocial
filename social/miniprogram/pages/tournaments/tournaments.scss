@@ -1,91 +1,166 @@
-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f6f7f8;
-}
-
+/* pages/tournaments/tournaments.scss */
 .scrollarea {
   flex: 1;
   overflow-y: hidden;
+  background-color: var(--bg-body);
 }
 
 .page {
-  padding: 24rpx;
+  padding: var(--spacing-md);
   box-sizing: border-box;
 }
 
-.section-title {
+.header-banner {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-sm) 0;
+}
+
+.h1 {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 8rpx;
+}
+
+.body-text {
   font-size: 28rpx;
-  font-weight: 600;
-  color: #111;
-  margin: 10rpx 0 18rpx;
+  color: var(--text-secondary);
 }
 
-.empty {
-  color: #666;
-  font-size: 24rpx;
-  padding: 18rpx 0 30rpx;
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl) 0;
+  color: var(--text-secondary);
 }
 
-.card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  box-sizing: border-box;
-  margin-bottom: 18rpx;
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: var(--spacing-sm);
+  opacity: 0.5;
+}
+
+.tournament-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-md);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  transition: all 0.2s;
+  
+  &:active {
+    transform: scale(0.99);
+  }
+}
+
+.card-status-strip {
+  width: 12rpx;
+  background: var(--primary-color);
+  
+  &.joined {
+    background: var(--success-color);
+  }
+  
+  &.open {
+    background: var(--primary-color);
+  }
+}
+
+.card-content {
+  flex: 1;
+  padding: var(--spacing-md);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-sm);
 }
 
 .title {
-  font-size: 30rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--text-main);
+  flex: 1;
+  margin-right: var(--spacing-sm);
+  line-height: 1.4;
+}
+
+.status-badge {
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: var(--radius-round);
+  background: rgba(41, 121, 255, 0.1);
+  color: var(--primary-color);
   font-weight: 600;
-  color: #111;
+  white-space: nowrap;
+  
+  &.joined {
+    background: rgba(46, 204, 113, 0.1);
+    color: var(--success-color);
+  }
 }
 
-.meta {
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: #666;
-}
-
-.content {
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  color: #333;
-}
-
-.actions {
-  margin-top: 16rpx;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.row {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 20rpx 24rpx;
-  box-sizing: border-box;
+.meta-row {
   display: flex;
   align-items: center;
+  gap: 12rpx;
+  margin-bottom: var(--spacing-sm);
+}
+
+.meta-icon {
+  font-size: 24rpx;
+}
+
+.meta-text {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.description {
+  font-size: 26rpx;
+  color: var(--text-regular);
+  margin-bottom: var(--spacing-md);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.card-footer {
+  display: flex;
   justify-content: space-between;
-  margin-bottom: 14rpx;
+  align-items: center;
+  margin-top: var(--spacing-md);
+  border-top: 1rpx solid var(--border-light);
+  padding-top: var(--spacing-md);
 }
 
-.row-title {
-  font-size: 28rpx;
-  color: #111;
+.action-btn {
+  margin: 0;
+  font-size: 24rpx;
+  padding: 12rpx 32rpx;
+  border-radius: var(--radius-round);
   font-weight: 600;
-}
-
-.row-sub {
-  margin-top: 6rpx;
-  font-size: 22rpx;
-  color: #666;
-}
-
-.row-right {
-  font-size: 28rpx;
-  color: #111;
-  font-weight: 700;
+  line-height: 1.5;
+  
+  &.primary {
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 4rpx 12rpx rgba(41, 121, 255, 0.3);
+  }
+  
+  &.secondary {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+  }
+  
+  &::after { border: none; }
 }
 

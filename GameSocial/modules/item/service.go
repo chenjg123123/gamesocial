@@ -63,6 +63,7 @@ func NewService(db *sql.DB) Service {
 	return &service{db: db}
 }
 
+// CreateGoods 创建商品并返回创建后的商品详情。
 func (s *service) CreateGoods(ctx context.Context, req CreateGoodsRequest) (Goods, error) {
 	// 1) 基础校验：DB 必须可用，参数必须满足最小约束。
 	if s.db == nil {
@@ -97,6 +98,7 @@ func (s *service) CreateGoods(ctx context.Context, req CreateGoodsRequest) (Good
 	return s.GetGoods(ctx, uint64(id))
 }
 
+// UpdateGoods 更新商品并返回更新后的商品详情。
 func (s *service) UpdateGoods(ctx context.Context, id uint64, req UpdateGoodsRequest) (Goods, error) {
 	// 1) 基础校验：id/参数合法性。
 	if s.db == nil {
@@ -136,6 +138,7 @@ func (s *service) UpdateGoods(ctx context.Context, id uint64, req UpdateGoodsReq
 	return s.GetGoods(ctx, id)
 }
 
+// DeleteGoods 软删除商品（status=0）。
 func (s *service) DeleteGoods(ctx context.Context, id uint64) error {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -162,6 +165,7 @@ func (s *service) DeleteGoods(ctx context.Context, id uint64) error {
 	return nil
 }
 
+// GetGoods 获取单个商品详情。
 func (s *service) GetGoods(ctx context.Context, id uint64) (Goods, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -190,6 +194,7 @@ func (s *service) GetGoods(ctx context.Context, id uint64) (Goods, error) {
 	return g, nil
 }
 
+// ListGoods 获取商品列表。
 func (s *service) ListGoods(ctx context.Context, req ListGoodsRequest) ([]Goods, error) {
 	// 1) 基础校验与分页兜底：limit 默认 20，最大 200。
 	if s.db == nil {

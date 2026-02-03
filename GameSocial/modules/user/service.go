@@ -51,6 +51,7 @@ func NewService(db *sql.DB) Service {
 	return &service{db: db}
 }
 
+// Get 获取用户详情。
 func (s *service) Get(ctx context.Context, id uint64) (User, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -81,6 +82,7 @@ func (s *service) Get(ctx context.Context, id uint64) (User, error) {
 	return u, nil
 }
 
+// List 获取用户列表。
 func (s *service) List(ctx context.Context, req ListUserRequest) ([]User, error) {
 	// 1) 基础校验与分页兜底。
 	if s.db == nil {
@@ -132,6 +134,7 @@ func (s *service) List(ctx context.Context, req ListUserRequest) ([]User, error)
 	return out, nil
 }
 
+// Update 更新用户资料/状态并返回更新后的用户详情。
 func (s *service) Update(ctx context.Context, id uint64, req UpdateUserRequest) (User, error) {
 	// 1) 基础校验。
 	if s.db == nil {

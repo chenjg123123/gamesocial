@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// Config 表示应用运行时配置（来自环境变量与 .env 文件）。
 type Config struct {
 	// ServerPort: HTTP 服务监听端口。
 	ServerPort int

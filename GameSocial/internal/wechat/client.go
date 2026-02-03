@@ -5,17 +5,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
 )
 
+// Client 是微信开放接口的最小客户端封装。
 type Client struct {
 	httpClient *http.Client
 	appID      string
 	appSecret  string
 }
 
+// Code2SessionResult 是微信 code2session 接口的响应结构。
 type Code2SessionResult struct {
 	OpenID     string `json:"openid"`
 	UnionID    string `json:"unionid"`
@@ -42,7 +45,6 @@ func (c *Client) Code2Session(ctx context.Context, code string) (Code2SessionRes
 	values.Set("secret", c.appSecret)
 	values.Set("js_code", code)
 	values.Set("grant_type", "authorization_code")
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.weixin.qq.com/sns/jscode2session?"+values.Encode(), nil)
 	if err != nil {
 		return Code2SessionResult{}, err
@@ -53,10 +55,21 @@ func (c *Client) Code2Session(ctx context.Context, code string) (Code2SessionRes
 		return Code2SessionResult{}, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return Code2SessionResult{}, fmt.Errorf("wechat code2session http error: %s", resp.Status)
+	}
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Code2SessionResult{}, err
+	}
+	if len(respBytes) == 0 {
+		return Code2SessionResult{}, fmt.Errorf("wechat code2session empty response")
+	}
 
 	var out Code2SessionResult
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return Code2SessionResult{}, err
+	if err := json.Unmarshal(respBytes, &out); err != nil {
+		return Code2SessionResult{}, fmt.Errorf("wechat code2session decode failed: %w", err)
 	}
 	if out.ErrCode != 0 {
 		return Code2SessionResult{}, fmt.Errorf("wechat code2session failed: %d %s", out.ErrCode, out.ErrMsg)

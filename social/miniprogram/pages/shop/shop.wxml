@@ -1,26 +1,51 @@
-<navigation-bar title="兑换" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<navigation-bar title="积分商城" back="{{false}}" color="black" background="#FFF"></navigation-bar>
 <scroll-view class="scrollarea" scroll-y type="list">
   <view class="page">
-    <view class="section-title">积分商品</view>
-    <view wx:if="{{goods.length === 0}}" class="empty">暂无商品</view>
-    <view wx:for="{{goods}}" wx:key="id" class="goods-card">
-      <view class="goods-title">{{item.name}}</view>
-      <view class="goods-sub">需要 {{item.pointsPrice}} 积分</view>
-      <view class="goods-actions">
-        <button size="mini" type="primary" data-id="{{item.id}}" bindtap="redeemGoods">兑换</button>
+    <view class="header-banner">
+      <view class="h1">精选好礼</view>
+      <view class="body-text">积分当钱花，好礼带回家</view>
+    </view>
+
+    <view wx:if="{{goods.length === 0}}" class="empty-state">
+      <view class="empty-icon">🛍️</view>
+      <view class="empty-text">商品正在上架中</view>
+    </view>
+
+    <view class="goods-grid">
+      <view wx:for="{{goods}}" wx:key="id" class="goods-item">
+        <view class="goods-cover">
+          <text class="goods-icon">🎁</text>
+        </view>
+        <view class="goods-info">
+          <view class="goods-name">{{item.name}}</view>
+          <view class="goods-price">
+            <text class="price-val">{{item.pointsPrice}}</text>
+            <text class="price-unit">积分</text>
+          </view>
+        </view>
+        <button class="redeem-btn" data-id="{{item.id}}" bindtap="redeemGoods">立即兑换</button>
       </view>
     </view>
 
-    <view class="section-title">我的订单</view>
-    <view wx:if="{{orders.length === 0}}" class="empty">暂无订单</view>
-    <view wx:for="{{orders}}" wx:key="id" class="order-row">
-      <view class="order-left">
-        <view class="order-no">{{item.orderNo || ('订单#' + item.id)}}</view>
-        <view class="order-sub">{{item.status}} · {{item.createdAt}}</view>
+    <view class="section-divider" wx:if="{{orders.length > 0}}"></view>
+
+    <view class="orders-section" wx:if="{{orders.length > 0}}">
+      <view class="section-header">
+        <text class="h3">兑换记录</text>
       </view>
-      <view class="order-right">
-        <view class="order-points">-{{item.totalPoints}}</view>
-        <button wx:if="{{item.status === 'CREATED'}}" size="mini" data-id="{{item.id}}" bindtap="cancelOrder">取消</button>
+      
+      <view wx:for="{{orders}}" wx:key="id" class="order-card">
+        <view class="order-header">
+          <view class="order-no">{{item.orderNo || ('订单#' + item.id)}}</view>
+          <view class="order-status {{item.status}}">{{item.status}}</view>
+        </view>
+        <view class="order-body">
+          <view class="order-time">{{item.createdAt}}</view>
+          <view class="order-cost">-{{item.totalPoints}} 积分</view>
+        </view>
+        <view class="order-footer" wx:if="{{item.status === 'CREATED'}}">
+          <button class="cancel-btn" size="mini" data-id="{{item.id}}" bindtap="cancelOrder">取消订单</button>
+        </view>
       </view>
     </view>
   </view>

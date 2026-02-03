@@ -1,3 +1,4 @@
+// handlers 实现面向小程序端与管理端的聚合接口（部分为占位实现）。
 package handlers
 
 import (
@@ -39,6 +40,7 @@ func userIDFromRequest(r *http.Request) uint64 {
 	return 0
 }
 
+// PointsLedgerItem 表示积分流水列表项。
 type PointsLedgerItem struct {
 	ID           uint64    `json:"id"`
 	ChangeAmount int64     `json:"changeAmount"`
@@ -49,6 +51,7 @@ type PointsLedgerItem struct {
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
+// AdminAuditLogItem 表示管理员审计日志列表项。
 type AdminAuditLogItem struct {
 	ID         uint64          `json:"id"`
 	AdminID    uint64          `json:"adminId"`
@@ -59,6 +62,8 @@ type AdminAuditLogItem struct {
 	CreatedAt  time.Time       `json:"createdAt"`
 }
 
+// AppUserMeGet 获取当前用户信息。
+// GET /api/users/me
 func AppUserMeGet(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -84,6 +89,8 @@ func AppUserMeGet(svc user.Service) http.HandlerFunc {
 	}
 }
 
+// AppUserMeUpdate 更新当前用户资料。
+// PUT /api/users/me
 func AppUserMeUpdate(svc user.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
@@ -116,6 +123,8 @@ func AppUserMeUpdate(svc user.Service) http.HandlerFunc {
 	}
 }
 
+// AppPointsBalance 查询用户积分余额。
+// GET /api/points/balance
 func AppPointsBalance(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -152,6 +161,8 @@ func AppPointsBalance(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// AppPointsLedgers 查询用户积分流水。
+// GET /api/points/ledgers
 func AppPointsLedgers(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -214,6 +225,8 @@ func AppPointsLedgers(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// AppVipStatus 查询用户会员订阅状态（基于 vip_subscription 表）。
+// GET /api/vip/status
 func AppVipStatus(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -259,6 +272,8 @@ func AppVipStatus(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// AppTournamentsList 获取赛事列表。
+// GET /api/tournaments
 func AppTournamentsList(svc tournament.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -288,6 +303,8 @@ func AppTournamentsList(svc tournament.Service) http.HandlerFunc {
 	}
 }
 
+// AppTournamentsGet 获取赛事详情。
+// GET /api/tournaments/{id}
 func AppTournamentsGet(svc tournament.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -313,6 +330,8 @@ func AppTournamentsGet(svc tournament.Service) http.HandlerFunc {
 	}
 }
 
+// AppTournamentsJoin 赛事报名占位接口。
+// POST /api/tournaments/{id}/join
 func AppTournamentsJoin() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -324,6 +343,8 @@ func AppTournamentsJoin() http.HandlerFunc {
 	}
 }
 
+// AppTournamentsCancel 赛事取消报名占位接口。
+// PUT /api/tournaments/{id}/cancel
 func AppTournamentsCancel() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
@@ -335,6 +356,8 @@ func AppTournamentsCancel() http.HandlerFunc {
 	}
 }
 
+// AppTournamentsResults 赛事成绩占位接口。
+// GET /api/tournaments/{id}/results
 func AppTournamentsResults() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -346,6 +369,8 @@ func AppTournamentsResults() http.HandlerFunc {
 	}
 }
 
+// AppTasksList 获取任务定义列表（当前仅返回有效任务定义）。
+// GET /api/tasks
 func AppTasksList(svc task.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -375,6 +400,8 @@ func AppTasksList(svc task.Service) http.HandlerFunc {
 	}
 }
 
+// AppTasksCheckin 任务打卡占位接口。
+// POST /api/tasks/checkin
 func AppTasksCheckin() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -385,6 +412,8 @@ func AppTasksCheckin() http.HandlerFunc {
 	}
 }
 
+// AppTasksClaim 任务领奖占位接口。
+// POST /api/tasks/{taskCode}/claim
 func AppTasksClaim() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -396,6 +425,8 @@ func AppTasksClaim() http.HandlerFunc {
 	}
 }
 
+// AppGoodsList 获取商品列表。
+// GET /api/goods
 func AppGoodsList(svc item.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -424,6 +455,8 @@ func AppGoodsList(svc item.Service) http.HandlerFunc {
 	}
 }
 
+// AppGoodsGet 获取商品详情。
+// GET /api/goods/{id}
 func AppGoodsGet(svc item.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -449,6 +482,8 @@ func AppGoodsGet(svc item.Service) http.HandlerFunc {
 	}
 }
 
+// AppRedeemOrderCreate 创建兑换订单。
+// POST /api/redeem/orders
 func AppRedeemOrderCreate(svc redeem.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -475,6 +510,8 @@ func AppRedeemOrderCreate(svc redeem.Service) http.HandlerFunc {
 	}
 }
 
+// AppRedeemOrderList 查询兑换订单列表。
+// GET /api/redeem/orders
 func AppRedeemOrderList(svc redeem.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -506,6 +543,8 @@ func AppRedeemOrderList(svc redeem.Service) http.HandlerFunc {
 	}
 }
 
+// AppRedeemOrderGet 查询兑换订单详情。
+// GET /api/redeem/orders/{id}
 func AppRedeemOrderGet(svc redeem.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -531,6 +570,8 @@ func AppRedeemOrderGet(svc redeem.Service) http.HandlerFunc {
 	}
 }
 
+// AppRedeemOrderCancel 取消兑换订单（CREATED -> CANCELED）。
+// PUT /api/redeem/orders/{id}/cancel
 func AppRedeemOrderCancel(svc redeem.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
@@ -556,6 +597,8 @@ func AppRedeemOrderCancel(svc redeem.Service) http.HandlerFunc {
 	}
 }
 
+// AdminAuthLogin 管理员登录占位接口。
+// POST /admin/auth/login
 func AdminAuthLogin() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -568,6 +611,8 @@ func AdminAuthLogin() http.HandlerFunc {
 	}
 }
 
+// AdminAuthMe 管理员信息占位接口。
+// GET /admin/auth/me
 func AdminAuthMe() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -581,6 +626,8 @@ func AdminAuthMe() http.HandlerFunc {
 	}
 }
 
+// AdminAuthLogout 管理员登出占位接口。
+// POST /admin/auth/logout
 func AdminAuthLogout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -591,6 +638,8 @@ func AdminAuthLogout() http.HandlerFunc {
 	}
 }
 
+// AdminAuditLogs 查询管理员审计日志。
+// GET /admin/audit/logs
 func AdminAuditLogs(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -660,6 +709,8 @@ func AdminAuditLogs(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// AdminPointsAdjust 积分调整占位接口。
+// POST /admin/points/adjust
 func AdminPointsAdjust() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -670,6 +721,8 @@ func AdminPointsAdjust() http.HandlerFunc {
 	}
 }
 
+// AdminUsersDrinksUse 消费饮品占位接口。
+// PUT /admin/users/{id}/drinks/use
 func AdminUsersDrinksUse() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
@@ -681,6 +734,8 @@ func AdminUsersDrinksUse() http.HandlerFunc {
 	}
 }
 
+// AdminTournamentResultsPublish 发布赛事成绩占位接口。
+// POST /admin/tournaments/{id}/results/publish
 func AdminTournamentResultsPublish() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -692,6 +747,8 @@ func AdminTournamentResultsPublish() http.HandlerFunc {
 	}
 }
 
+// AdminTournamentAwardsGrant 发放赛事奖励占位接口。
+// POST /admin/tournaments/{id}/awards/grant
 func AdminTournamentAwardsGrant() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -703,6 +760,8 @@ func AdminTournamentAwardsGrant() http.HandlerFunc {
 	}
 }
 
+// AdminMediaUpload 上传媒体占位接口。
+// POST /admin/media/upload
 func AdminMediaUpload() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

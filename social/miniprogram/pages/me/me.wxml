@@ -1,37 +1,68 @@
-<navigation-bar title="我的" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<navigation-bar title="个人中心" back="{{false}}" color="white" background="transparent"></navigation-bar>
 <scroll-view class="scrollarea" scroll-y type="list">
-  <view class="page">
-    <view class="profile card">
-      <view class="row">
-        <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
-          <image class="avatar" src="{{avatarUrl || ''}}" mode="aspectFill"></image>
-        </button>
-        <view class="profile-info">
-          <input class="nickname" placeholder="请输入昵称" value="{{nickname}}" bindinput="onNicknameInput" />
-          <view class="idline">用户ID：{{userId || '-'}}</view>
-        </view>
+  <view class="header-section">
+    <view class="profile-header">
+      <button class="avatar-wrapper" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+        <image class="avatar" src="{{avatarUrl || ''}}" mode="aspectFill"></image>
+        <view class="avatar-edit-hint">📷</view>
+      </button>
+      <view class="profile-info">
+        <input class="nickname-input" placeholder="点击设置昵称" placeholder-class="nickname-placeholder" value="{{nickname}}" bindinput="onNicknameInput" />
+        <view class="id-tag">ID: {{userId || '-'}}</view>
       </view>
-      <view class="profile-actions">
-        <button size="mini" type="primary" bindtap="saveProfile" loading="{{saving}}">保存资料</button>
-        <button size="mini" bindtap="relogin" loading="{{reloginLoading}}">重新登录</button>
-        <button size="mini" bindtap="openAdmin">管理后台</button>
-        <button size="mini" type="warn" bindtap="doLogout">退出</button>
+    </view>
+  </view>
+
+  <view class="page-body">
+    <view class="action-card">
+      <view class="action-item" bindtap="saveProfile">
+        <view class="action-icon">💾</view>
+        <view class="action-text">保存资料</view>
+      </view>
+      <view class="action-item" bindtap="authorizeLogin">
+        <view class="action-icon">✅</view>
+        <view class="action-text">授权登录</view>
+      </view>
+      <view class="action-item" bindtap="openAdmin">
+        <view class="action-icon">⚙️</view>
+        <view class="action-text">管理后台</view>
+      </view>
+      <view class="action-item warning" bindtap="doLogout">
+        <view class="action-icon">🚪</view>
+        <view class="action-text">退出登录</view>
       </view>
     </view>
 
-    <view class="section-title">积分流水</view>
-    <view wx:if="{{ledger.length === 0}}" class="empty">暂无流水</view>
-    <view wx:for="{{ledger}}" wx:key="id" class="ledger-row">
-      <view class="ledger-left">
-        <view class="ledger-type">{{item.bizType}}</view>
-        <view class="ledger-sub">{{item.createdAt}}</view>
+    <view class="list-section">
+      <view class="section-header">
+        <text class="h3">积分流水</text>
       </view>
-      <view class="ledger-right">
-        <view class="ledger-change">{{item.changeAmount}}</view>
-        <view class="ledger-balance">余额 {{item.balanceAfter}}</view>
+      
+      <view wx:if="{{ledger.length === 0}}" class="empty-state">
+        <view class="empty-icon">📭</view>
+        <view class="empty-text">暂无流水记录</view>
+      </view>
+
+      <view wx:for="{{ledger}}" wx:key="id" class="ledger-card">
+        <view class="ledger-main">
+          <view class="ledger-icon">{{item.changeAmount > 0 ? '💰' : '💸'}}</view>
+          <view class="ledger-content">
+            <view class="ledger-title">{{item.bizType}}</view>
+            <view class="ledger-date">{{item.createdAt}}</view>
+          </view>
+          <view class="ledger-amount {{item.changeAmount > 0 ? 'positive' : 'negative'}}">
+            {{item.changeAmount > 0 ? '+' : ''}}{{item.changeAmount}}
+          </view>
+        </view>
+        <view class="ledger-footer">
+          余额 {{item.balanceAfter}}
+        </view>
+      </view>
+      
+      <view class="load-more" wx:if="{{hasMore}}" bindtap="loadMore">
+        <text>点击加载更多</text>
       </view>
     </view>
-    <button wx:if="{{hasMore}}" size="mini" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
   </view>
 </scroll-view>
 

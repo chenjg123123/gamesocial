@@ -69,6 +69,7 @@ func NewService(db *sql.DB) Service {
 	return &service{db: db}
 }
 
+// Create 创建赛事并返回创建后的赛事详情。
 func (s *service) Create(ctx context.Context, req CreateTournamentRequest) (Tournament, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -105,6 +106,7 @@ func (s *service) Create(ctx context.Context, req CreateTournamentRequest) (Tour
 	return s.Get(ctx, uint64(id))
 }
 
+// Update 更新赛事并返回更新后的赛事详情。
 func (s *service) Update(ctx context.Context, id uint64, req UpdateTournamentRequest) (Tournament, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -142,6 +144,7 @@ func (s *service) Update(ctx context.Context, id uint64, req UpdateTournamentReq
 	return s.Get(ctx, id)
 }
 
+// Delete 软删除赛事（status=CANCELED）。
 func (s *service) Delete(ctx context.Context, id uint64) error {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -167,6 +170,7 @@ func (s *service) Delete(ctx context.Context, id uint64) error {
 	return nil
 }
 
+// Get 获取赛事详情。
 func (s *service) Get(ctx context.Context, id uint64) (Tournament, error) {
 	// 1) 基础校验。
 	if s.db == nil {
@@ -196,6 +200,7 @@ func (s *service) Get(ctx context.Context, id uint64) (Tournament, error) {
 	return t, nil
 }
 
+// List 获取赛事列表。
 func (s *service) List(ctx context.Context, req ListTournamentRequest) ([]Tournament, error) {
 	// 1) 基础校验与分页兜底。
 	if s.db == nil {

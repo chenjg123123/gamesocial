@@ -1,21 +1,46 @@
-<navigation-bar title="赛事" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<navigation-bar title="赛事活动" back="{{false}}" color="black" background="#FFF"></navigation-bar>
 <scroll-view class="scrollarea" scroll-y type="list">
   <view class="page">
-    <view class="section-title">近期赛事</view>
-    <view wx:if="{{items.length === 0}}" class="empty">暂无赛事</view>
-    <view wx:for="{{items}}" wx:key="id" class="card">
-      <view class="title">{{item.title}}</view>
-      <view class="meta">{{item.startAt}} - {{item.endAt}}</view>
-      <view class="content" wx:if="{{item.content}}">{{item.content}}</view>
-      <view class="actions">
-        <button
-          size="mini"
-          type="{{item.joined ? 'default' : 'primary'}}"
-          data-id="{{item.id}}"
-          bindtap="{{item.joined ? 'cancelJoin' : 'join'}}"
-        >
-          {{item.joined ? '已报名' : '报名'}}
-        </button>
+    <view class="header-banner">
+      <view class="h1">热门赛事</view>
+      <view class="body-text">参与竞技，赢取积分</view>
+    </view>
+
+    <view wx:if="{{items.length === 0}}" class="empty-state">
+      <view class="empty-icon">🏆</view>
+      <view class="empty-text">暂无近期赛事</view>
+    </view>
+
+    <view wx:for="{{items}}" wx:key="id" class="tournament-card">
+      <view class="card-status-strip {{item.joined ? 'joined' : 'open'}}"></view>
+      <view class="card-content">
+        <view class="card-header">
+          <view class="title">{{item.title}}</view>
+          <view class="status-badge {{item.joined ? 'joined' : ''}}">
+            {{item.joined ? '已报名' : '报名中'}}
+          </view>
+        </view>
+        
+        <view class="meta-row">
+          <view class="meta-icon">📅</view>
+          <view class="meta-text">{{item.startAt}} - {{item.endAt}}</view>
+        </view>
+        
+        <view class="description" wx:if="{{item.content}}">{{item.content}}</view>
+        
+        <view class="card-footer">
+          <view class="participants">
+            <!-- Mock participants avatars if needed, or just text -->
+            <text class="caption">🔥 火热报名中</text>
+          </view>
+          <button
+            class="action-btn {{item.joined ? 'secondary' : 'primary'}}"
+            data-id="{{item.id}}"
+            bindtap="{{item.joined ? 'cancelJoin' : 'join'}}"
+          >
+            {{item.joined ? '取消报名' : '立即报名'}}
+          </button>
+        </view>
       </view>
     </view>
   </view>
