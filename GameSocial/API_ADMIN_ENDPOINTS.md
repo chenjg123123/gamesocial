@@ -1,13 +1,16 @@
-# GameSocial 功能接口总览（按模块拆分）
+# GameSocial 后台管理端接口（Admin）
 
-本文档基于《模块化架构设计》与当前后端实际已注册的路由整理，覆盖“已实现 + 规划待实现”的全部 HTTP 接口；已实现的接口在标题后标注 `√`，未实现标注 `×`。
+本文档整理后台管理端（`/admin/*`）接口说明，包含：用途、实现位置、设计思路、请求格式、响应格式。已实现接口标注 `√`，未实现标注 `×`。
+
+快速入口：
+
+- 客户端接口：[API_CLIENT_ENDPOINTS.md](API_CLIENT_ENDPOINTS.md)
+- 总览：[API_ALL_ENDPOINTS.md](API_ALL_ENDPOINTS.md)
 
 ## 接口目录
 
 - √ [健康检查模块](#module-health)
   - √ [GET /health](#api-health)
-- √ [Auth 模块（小程序登录）](#module-auth)
-  - √ [POST /api/auth/wechat/login](#api-auth-wechat-login)
 - √ [Item 模块（管理员：积分商品管理）](#module-item)
   - √ [POST /admin/goods](#api-admin-goods-create)
   - √ [GET /admin/goods](#api-admin-goods-list)
@@ -36,107 +39,17 @@
   - √ [GET /admin/redeem/orders/{id}](#api-admin-redeem-orders-get)
   - √ [PUT /admin/redeem/orders/{id}/use](#api-admin-redeem-orders-use)
   - √ [PUT /admin/redeem/orders/{id}/cancel](#api-admin-redeem-orders-cancel)
-- × [小程序侧接口（部分未完成）](#module-unimplemented)
-  - √ [User 模块（小程序：个人资料）](#module-user-app)
-    - √ [GET /api/users/me](#api-users-me-get)
-    - √ [PUT /api/users/me](#api-users-me-update)
-  - √ [Points 模块（小程序：积分账户与流水）](#module-points)
-    - √ [GET /api/points/balance](#api-points-balance)
-    - √ [GET /api/points/ledgers](#api-points-ledgers)
-  - √ [VIP 模块（小程序：会员订阅）](#module-vip)
-    - √ [GET /api/vip/status](#api-vip-status)
-  - × [Tournament 模块（小程序：赛事）](#module-tournament-app)
-    - √ [GET /api/tournaments](#api-tournaments-list)
-    - √ [GET /api/tournaments/{id}](#api-tournaments-get)
-    - × [POST /api/tournaments/{id}/join](#api-tournaments-join)
-    - × [PUT /api/tournaments/{id}/cancel](#api-tournaments-cancel)
-    - × [GET /api/tournaments/{id}/results](#api-tournaments-results)
-  - × [Task 模块（小程序：任务与打卡）](#module-task-app)
-    - √ [GET /api/tasks](#api-tasks-list)
-    - × [POST /api/tasks/checkin](#api-tasks-checkin)
-    - × [POST /api/tasks/{taskCode}/claim](#api-tasks-claim)
-  - √ [Item 模块（小程序：积分商品）](#module-item-app)
-    - √ [GET /api/goods](#api-goods-list)
-    - √ [GET /api/goods/{id}](#api-goods-get)
-  - √ [Redeem 模块（小程序：兑换订单）](#module-redeem-app)
-    - √ [POST /api/redeem/orders](#api-redeem-orders-create)
-    - √ [GET /api/redeem/orders](#api-redeem-orders-list)
-    - √ [GET /api/redeem/orders/{id}](#api-redeem-orders-get)
-    - √ [PUT /api/redeem/orders/{id}/cancel](#api-redeem-orders-cancel)
-  - × [Admin 模块（管理员：登录/审计/关键操作）](#module-admin)
-    - × [POST /admin/auth/login](#api-admin-auth-login)
-    - × [GET /admin/auth/me](#api-admin-auth-me)
-    - × [POST /admin/auth/logout](#api-admin-auth-logout)
-    - √ [GET /admin/audit/logs](#api-admin-audit-logs)
-    - × [POST /admin/points/adjust](#api-admin-points-adjust)
-    - × [PUT /admin/users/{id}/drinks/use](#api-admin-users-drinks-use)
-    - × [POST /admin/tournaments/{id}/results/publish](#api-admin-tournament-results-publish)
-    - × [POST /admin/tournaments/{id}/awards/grant](#api-admin-tournament-awards-grant)
-  - × [Media 模块（媒体上传/访问）](#module-media)
-    - × [POST /admin/media/upload](#api-admin-media-upload)
-
-## 已注册路由清单（与 cmd/server/main.go#L127-L164 一致）
-
-说明：
-
-- 这一表格展示“当前已注册路由”，与代码注册保持一致；“完成”列用于标识该路由的业务实现完成度。
-- “详情”列可直接跳转到该接口的详细说明段落。
-
-| 完成 | 模块 | Method | Path | 详情 |
-|---|---|---|---|---|
-| √ | 健康检查 | GET | /health | [GET /health](#api-health) |
-| √ | Auth（小程序登录） | POST | /api/auth/wechat/login | [POST /api/auth/wechat/login](#api-auth-wechat-login) |
-| √ | Item（管理员：积分商品） | POST | /admin/goods | [POST /admin/goods](#api-admin-goods-create) |
-| √ | Item（管理员：积分商品） | GET | /admin/goods | [GET /admin/goods](#api-admin-goods-list) |
-| √ | Item（管理员：积分商品） | GET | /admin/goods/{id} | [GET /admin/goods/{id}](#api-admin-goods-get) |
-| √ | Item（管理员：积分商品） | PUT | /admin/goods/{id} | [PUT /admin/goods/{id}](#api-admin-goods-update) |
-| √ | Item（管理员：积分商品） | DELETE | /admin/goods/{id} | [DELETE /admin/goods/{id}](#api-admin-goods-delete) |
-| √ | Tournament（管理员：赛事） | POST | /admin/tournaments | [POST /admin/tournaments](#api-admin-tournaments-create) |
-| √ | Tournament（管理员：赛事） | GET | /admin/tournaments | [GET /admin/tournaments](#api-admin-tournaments-list) |
-| √ | Tournament（管理员：赛事） | GET | /admin/tournaments/{id} | [GET /admin/tournaments/{id}](#api-admin-tournaments-get) |
-| √ | Tournament（管理员：赛事） | PUT | /admin/tournaments/{id} | [PUT /admin/tournaments/{id}](#api-admin-tournaments-update) |
-| √ | Tournament（管理员：赛事） | DELETE | /admin/tournaments/{id} | [DELETE /admin/tournaments/{id}](#api-admin-tournaments-delete) |
-| √ | Task（管理员：任务定义） | POST | /admin/task-defs | [POST /admin/task-defs](#api-admin-task-defs-create) |
-| √ | Task（管理员：任务定义） | GET | /admin/task-defs | [GET /admin/task-defs](#api-admin-task-defs-list) |
-| √ | Task（管理员：任务定义） | GET | /admin/task-defs/{id} | [GET /admin/task-defs/{id}](#api-admin-task-defs-get) |
-| √ | Task（管理员：任务定义） | PUT | /admin/task-defs/{id} | [PUT /admin/task-defs/{id}](#api-admin-task-defs-update) |
-| √ | Task（管理员：任务定义） | DELETE | /admin/task-defs/{id} | [DELETE /admin/task-defs/{id}](#api-admin-task-defs-delete) |
-| √ | User（管理员：用户） | GET | /admin/users | [GET /admin/users](#api-admin-users-list) |
-| √ | User（管理员：用户） | GET | /admin/users/{id} | [GET /admin/users/{id}](#api-admin-users-get) |
-| √ | User（管理员：用户） | PUT | /admin/users/{id} | [PUT /admin/users/{id}](#api-admin-users-update) |
-| √ | Redeem（管理员：兑换订单） | POST | /admin/redeem/orders | [POST /admin/redeem/orders](#api-admin-redeem-orders-create) |
-| √ | Redeem（管理员：兑换订单） | GET | /admin/redeem/orders | [GET /admin/redeem/orders](#api-admin-redeem-orders-list) |
-| √ | Redeem（管理员：兑换订单） | GET | /admin/redeem/orders/{id} | [GET /admin/redeem/orders/{id}](#api-admin-redeem-orders-get) |
-| √ | Redeem（管理员：兑换订单） | PUT | /admin/redeem/orders/{id}/use | [PUT /admin/redeem/orders/{id}/use](#api-admin-redeem-orders-use) |
-| √ | Redeem（管理员：兑换订单） | PUT | /admin/redeem/orders/{id}/cancel | [PUT /admin/redeem/orders/{id}/cancel](#api-admin-redeem-orders-cancel) |
-| √ | User（小程序：个人资料） | GET | /api/users/me | [GET /api/users/me](#api-users-me-get) |
-| √ | User（小程序：个人资料） | PUT | /api/users/me | [PUT /api/users/me](#api-users-me-update) |
-| √ | Item（小程序：积分商品） | GET | /api/goods | [GET /api/goods](#api-goods-list) |
-| √ | Item（小程序：积分商品） | GET | /api/goods/{id} | [GET /api/goods/{id}](#api-goods-get) |
-| √ | Tournament（小程序：赛事） | GET | /api/tournaments | [GET /api/tournaments](#api-tournaments-list) |
-| √ | Tournament（小程序：赛事） | GET | /api/tournaments/{id} | [GET /api/tournaments/{id}](#api-tournaments-get) |
-| × | Tournament（小程序：赛事） | POST | /api/tournaments/{id}/join | [POST /api/tournaments/{id}/join](#api-tournaments-join) |
-| × | Tournament（小程序：赛事） | PUT | /api/tournaments/{id}/cancel | [PUT /api/tournaments/{id}/cancel](#api-tournaments-cancel) |
-| × | Tournament（小程序：赛事） | GET | /api/tournaments/{id}/results | [GET /api/tournaments/{id}/results](#api-tournaments-results) |
-| √ | Redeem（小程序：兑换订单） | GET | /api/redeem/orders | [GET /api/redeem/orders](#api-redeem-orders-list) |
-| √ | Redeem（小程序：兑换订单） | POST | /api/redeem/orders | [POST /api/redeem/orders](#api-redeem-orders-create) |
-| √ | Redeem（小程序：兑换订单） | GET | /api/redeem/orders/{id} | [GET /api/redeem/orders/{id}](#api-redeem-orders-get) |
-| √ | Redeem（小程序：兑换订单） | PUT | /api/redeem/orders/{id}/cancel | [PUT /api/redeem/orders/{id}/cancel](#api-redeem-orders-cancel) |
-| √ | Points（小程序：积分） | GET | /api/points/balance | [GET /api/points/balance](#api-points-balance) |
-| √ | Points（小程序：积分） | GET | /api/points/ledgers | [GET /api/points/ledgers](#api-points-ledgers) |
-| √ | VIP（小程序：会员） | GET | /api/vip/status | [GET /api/vip/status](#api-vip-status) |
-| √ | Task（小程序：任务） | GET | /api/tasks | [GET /api/tasks](#api-tasks-list) |
-| × | Task（小程序：任务） | POST | /api/tasks/checkin | [POST /api/tasks/checkin](#api-tasks-checkin) |
-| × | Task（小程序：任务） | POST | /api/tasks/{taskCode}/claim | [POST /api/tasks/{taskCode}/claim](#api-tasks-claim) |
-| × | Admin（管理员） | POST | /admin/auth/login | [POST /admin/auth/login](#api-admin-auth-login) |
-| × | Admin（管理员） | GET | /admin/auth/me | [GET /admin/auth/me](#api-admin-auth-me) |
-| × | Admin（管理员） | POST | /admin/auth/logout | [POST /admin/auth/logout](#api-admin-auth-logout) |
-| √ | Admin（管理员） | GET | /admin/audit/logs | [GET /admin/audit/logs](#api-admin-audit-logs) |
-| × | Admin（管理员） | POST | /admin/points/adjust | [POST /admin/points/adjust](#api-admin-points-adjust) |
-| × | Admin（管理员） | PUT | /admin/users/{id}/drinks/use | [PUT /admin/users/{id}/drinks/use](#api-admin-users-drinks-use) |
-| × | Admin（管理员） | POST | /admin/tournaments/{id}/results/publish | [POST /admin/tournaments/{id}/results/publish](#api-admin-tournament-results-publish) |
-| × | Admin（管理员） | POST | /admin/tournaments/{id}/awards/grant | [POST /admin/tournaments/{id}/awards/grant](#api-admin-tournament-awards-grant) |
-| × | Media（管理员） | POST | /admin/media/upload | [POST /admin/media/upload](#api-admin-media-upload) |
+- × [Admin 模块（管理员：登录/审计/关键操作）](#module-admin)
+  - × [POST /admin/auth/login](#api-admin-auth-login)
+  - × [GET /admin/auth/me](#api-admin-auth-me)
+  - × [POST /admin/auth/logout](#api-admin-auth-logout)
+  - √ [GET /admin/audit/logs](#api-admin-audit-logs)
+  - × [POST /admin/points/adjust](#api-admin-points-adjust)
+  - × [PUT /admin/users/{id}/drinks/use](#api-admin-users-drinks-use)
+  - × [POST /admin/tournaments/{id}/results/publish](#api-admin-tournament-results-publish)
+  - × [POST /admin/tournaments/{id}/awards/grant](#api-admin-tournament-awards-grant)
+- × [Media 模块（媒体上传/访问）](#module-media)
+  - × [POST /admin/media/upload](#api-admin-media-upload)
 
 ## 0. 通用约定
 
@@ -209,6 +122,17 @@ GET /health √
 
 用途：用于部署探活与检查服务是否存活。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L129-L133)
+- Handler：[health.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/health.go#L1-L21)
+
+实现逻辑：
+
+1. handler 初始化时生成 `startedAt`（闭包捕获）。
+2. 每次请求返回 `status/startedAt/now`。
+3. 使用统一响应 `SendJSuccess` 返回 `data`。
+
 请求：
 
 - Method：`GET`
@@ -244,83 +168,6 @@ curl -X GET "http://localhost:8080/health"
 
 ---
 
-## module-auth
-Auth 模块（小程序登录） √
-
-### api-auth-wechat-login
-POST /api/auth/wechat/login √
-
-用途：小程序登录。前端传 `wx.login()` 得到的 `code`，后端通过 code2session 换取 openid/unionid，并创建/更新用户后签发 token。
-
-请求：
-
-- Method：`POST`
-- Path：`/api/auth/wechat/login`
-- Body：JSON
-
-请求体字段：
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|---:|---|
-| code | string | 是 | `wx.login()` 返回的临时登录凭证 |
-
-请求示例：
-
-```bash
-curl -X POST "http://localhost:8080/api/auth/wechat/login" \
-  -H "Content-Type: application/json" \
-  -d "{\"code\":\"wx_login_code_here\"}"
-```
-
-成功响应 `data` 字段：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| token | string | 访问 token（后续请求放到 `Authorization: Bearer <token>`） |
-| user | object | 用户信息 |
-
-`user` 字段：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| id | number | 用户 ID |
-| openId | string | 小程序 openid |
-| unionId | string | 可选 unionid |
-| nickname | string | 昵称（当前创建时为空字符串） |
-| avatarUrl | string | 头像 URL（当前创建时为空字符串） |
-| status | number | 1=正常，0=封禁 |
-
-成功响应示例：
-
-```json
-{
-  "code": 200,
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": 1001,
-      "openId": "o_xxxxxxx",
-      "unionId": "",
-      "nickname": "",
-      "avatarUrl": "",
-      "status": 1
-    }
-  },
-  "message": "ok"
-}
-```
-
-失败场景示例（code 为空）：
-
-```json
-{
-  "code": 201,
-  "message": "code 不能为空"
-}
-```
-
----
-
 ## module-item
 Item 模块（管理员：积分商品管理） √
 
@@ -328,6 +175,19 @@ Item 模块（管理员：积分商品管理） √
 POST /admin/goods √
 
 用途：创建积分商品（goods）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `POST`，并校验 `svc` 已注入。
+2. 解析 JSON body 为创建请求对象，进行基础校验（必填字段、数值范围等）。
+3. 写入 `goods` 表并返回创建后的商品对象。
+4. 返回 `SendJSuccess`。
 
 请求：
 
@@ -388,6 +248,19 @@ GET /admin/goods √
 
 用途：商品列表（默认排除已软删除的商品）。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 `offset/limit/status`（并做分页兜底）。
+3. 从 `goods` 表查询列表（默认排除软删除记录）。
+4. 返回 `SendJSuccess`。
+
 请求：
 
 - Method：`GET`
@@ -439,6 +312,19 @@ GET /admin/goods/{id} √
 
 用途：获取单个商品详情。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，非法直接返回业务失败。
+3. 从 `goods` 表读取单条记录并返回。
+4. 返回 `SendJSuccess`。
+
 请求：
 
 - Method：`GET`
@@ -476,6 +362,19 @@ curl -X GET "http://localhost:8080/admin/goods/1"
 PUT /admin/goods/{id} √
 
 用途：更新商品（全量更新可变字段）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 解析 path 参数 `id`，并解析 JSON body 为更新请求对象。
+3. 更新 `goods` 表的可变字段并返回更新后的商品对象。
+4. 返回 `SendJSuccess`。
 
 请求：
 
@@ -526,6 +425,19 @@ DELETE /admin/goods/{id} √
 
 用途：删除商品（软删除：`status=0`）。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `DELETE`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，非法直接返回业务失败。
+3. 调用 `svc.DeleteGoods(ctx, id)`，把 `goods.status` 更新为 0（软删除）。
+4. 返回 `data.deleted=true`。
+
 请求：
 
 - Method：`DELETE`
@@ -558,6 +470,19 @@ Tournament 模块（管理员：赛事管理） √
 POST /admin/tournaments √
 
 用途：创建赛事（tournament）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go#L1-L44)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go#L1-L131)
+
+实现逻辑：
+
+1. 校验方法为 `POST`，并校验 `svc` 已注入。
+2. 解析 JSON body 为 `CreateTournamentRequest`。
+3. 调用 `svc.Create(ctx, req)` 写入 `tournament` 表，并返回创建后的赛事详情。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -622,6 +547,19 @@ GET /admin/tournaments √
 
 用途：赛事列表。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 query：`offset/limit/status`（并做分页兜底）。
+3. 调用 `svc.List(ctx, req)` 查询 `tournament` 列表（未指定 status 时默认排除 `CANCELED`）。
+4. 返回 `SendJSuccess`。
+
 Query：
 
 - `offset`：默认 0
@@ -676,6 +614,19 @@ GET /admin/tournaments/{id} √
 
 用途：赛事详情。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，非法直接返回业务失败。
+3. 调用 `svc.Get(ctx, id)` 读取赛事详情。
+4. 返回 `SendJSuccess`。
+
 请求示例：
 
 ```bash
@@ -709,6 +660,19 @@ curl -X GET "http://localhost:8080/admin/tournaments/1"
 PUT /admin/tournaments/{id} √
 
 用途：更新赛事（全量更新可变字段）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，并解析 JSON body 为 `UpdateTournamentRequest`。
+3. 调用 `svc.Update(ctx, id, req)` 更新赛事并返回最新详情。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -757,6 +721,19 @@ DELETE /admin/tournaments/{id} √
 
 用途：删除赛事（软删除：将 `status` 置为 `CANCELED`）。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `DELETE`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 调用 `svc.Delete(ctx, id)` 将赛事状态更新为 `CANCELED`（软删除）。
+4. 返回 `data.deleted=true`。
+
 请求示例：
 
 ```bash
@@ -786,6 +763,19 @@ Task 模块（管理员：任务定义管理） √
 POST /admin/task-defs √
 
 用途：创建任务定义（task_def）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `POST`，并校验 `svc` 已注入。
+2. 解析 JSON body 为 `CreateTaskDefRequest`。
+3. 写入 `task_def` 表并返回创建后的任务定义对象。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -848,6 +838,19 @@ GET /admin/task-defs √
 
 用途：任务定义列表。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 query：`offset/limit/status`（并做分页兜底）。
+3. 查询 `task_def` 表返回列表（默认排除软删除/停用记录取决于传参）。
+4. 返回 `SendJSuccess`。
+
 Query：
 
 - `offset`：默认 0
@@ -900,6 +903,19 @@ GET /admin/task-defs/{id} √
 
 用途：任务定义详情。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 查询 `task_def` 表返回单条任务定义对象（`rule_json` 扫描为 JSON）。
+4. 返回 `SendJSuccess`。
+
 请求示例：
 
 ```bash
@@ -932,6 +948,19 @@ curl -X GET "http://localhost:8080/admin/task-defs/1"
 PUT /admin/task-defs/{id} √
 
 用途：更新任务定义（全量更新可变字段）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，并解析 JSON body 为 `UpdateTaskDefRequest`。
+3. 更新 `task_def` 表并返回更新后的任务定义对象。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -979,6 +1008,19 @@ DELETE /admin/task-defs/{id} √
 
 用途：删除任务定义（软删除：`status=0`）。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `DELETE`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 更新 `task_def.status=0` 作为软删除。
+4. 返回 `data.deleted=true`。
+
 请求示例：
 
 ```bash
@@ -1008,6 +1050,19 @@ User 模块（管理员：用户管理） √
 GET /admin/users √
 
 用途：用户列表。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[admin_users.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_users.go)
+- Service：[user/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/user/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 query：`offset/limit/status`。
+3. 查询 `user` 表返回用户数组。
+4. 返回 `SendJSuccess`。
 
 Query：
 
@@ -1072,6 +1127,19 @@ GET /admin/users/{id} √
 
 用途：用户详情。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[admin_users.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_users.go#L1-L118)
+- Service：[user/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/user/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 调用 `svc.Get(ctx, id)` 查询用户并返回。
+4. 返回 `SendJSuccess`。
+
 请求示例：
 
 ```bash
@@ -1103,6 +1171,19 @@ curl -X GET "http://localhost:8080/admin/users/1001"
 PUT /admin/users/{id} √
 
 用途：更新用户资料/状态。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[admin_users.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_users.go#L1-L118)
+- Service：[user/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/user/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，并解析 JSON body 为 `UpdateUserRequest`。
+3. 调用 `svc.Update(ctx, id, req)` 更新用户可变字段并返回最新对象。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -1154,6 +1235,19 @@ Redeem 模块（管理员：兑换订单管理） √
 POST /admin/redeem/orders √
 
 用途：创建兑换订单（最小 CRUD：当前不接入积分扣减流水）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `POST`，并校验 `svc` 已注入。
+2. 解析 JSON body（`userId/items`），并做基础校验（items 至少 1 条、数量/积分非负等）。
+3. 调用 `svc.CreateOrder(ctx, req)`：写 `redeem_order` 与 `redeem_order_item`，生成 `orderNo`。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -1235,6 +1329,19 @@ GET /admin/redeem/orders √
 
 用途：兑换订单列表（不包含 items，避免列表响应过重）。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 query：`offset/limit/status/userId`。
+3. 调用 `svc.ListOrders(ctx, req)` 查询 `redeem_order` 列表（不带 items）。
+4. 返回 `SendJSuccess`。
+
 Query：
 
 - `offset`：默认 0
@@ -1297,6 +1404,19 @@ GET /admin/redeem/orders/{id} √
 
 用途：兑换订单详情（包含 items）。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 调用 `svc.GetOrder(ctx, id)`：读取订单主表 + 明细表并组装返回。
+4. 返回 `SendJSuccess`。
+
 请求示例：
 
 ```bash
@@ -1335,6 +1455,20 @@ curl -X GET "http://localhost:8080/admin/redeem/orders/10"
 PUT /admin/redeem/orders/{id}/use √
 
 用途：核销订单（仅允许 `CREATED -> USED`，避免重复核销）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go#L118-L160)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go#L270-L323)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，校验为正整数。
+3. 解析可选 JSON body：`adminId/admin_id`；未提供则默认 `1`。
+4. 调用 `svc.UseOrder(ctx, id, adminId)`：仅允许 `CREATED -> USED`，更新 `used_by_admin_id/used_at`。
+5. 返回更新后的 `RedeemOrder`（包含 items）。
 
 请求：
 
@@ -1391,6 +1525,19 @@ PUT /admin/redeem/orders/{id}/cancel √
 
 用途：取消订单（仅允许 `CREATED -> CANCELED`）。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go#L162-L193)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go#L299-L323)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，校验为正整数。
+3. 调用 `svc.CancelOrder(ctx, id)`：仅允许 `CREATED -> CANCELED`。
+4. 返回更新后的 `RedeemOrder`（包含 items）。
+
 请求示例：
 
 ```bash
@@ -1427,160 +1574,6 @@ curl -X PUT "http://localhost:8080/admin/redeem/orders/10/cancel"
 
 ---
 
-## module-user-app
-User 模块（小程序：个人资料） √
-
-### api-users-me-get
-GET /api/users/me √
-
-用途：获取当前登录用户的个人资料（昵称、头像等）。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
-### api-users-me-update
-PUT /api/users/me √
-
-用途：更新当前登录用户的个人资料（昵称、头像等）。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
----
-
-## module-points
-Points 模块（小程序：积分账户与流水） √
-
-### api-points-balance
-GET /api/points/balance √
-
-用途：获取当前登录用户的积分余额。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
-### api-points-ledgers
-GET /api/points/ledgers √
-
-用途：获取当前登录用户的积分流水列表。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
----
-
-## module-vip
-VIP 模块（小程序：会员订阅） √
-
-### api-vip-status
-GET /api/vip/status √
-
-用途：获取当前登录用户的会员状态（是否会员、到期时间等）。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
----
-
-## module-tournament-app
-Tournament 模块（小程序：赛事） ×
-
-### api-tournaments-list
-GET /api/tournaments √
-
-用途：赛事列表。
-
-### api-tournaments-get
-GET /api/tournaments/{id} √
-
-用途：赛事详情。
-
-### api-tournaments-join
-POST /api/tournaments/{id}/join ×
-
-用途：报名参赛。
-
-### api-tournaments-cancel
-PUT /api/tournaments/{id}/cancel ×
-
-用途：取消报名。
-
-### api-tournaments-results
-GET /api/tournaments/{id}/results ×
-
-用途：查看赛事排名/成绩。
-
----
-
-## module-task-app
-Task 模块（小程序：任务与打卡） ×
-
-### api-tasks-list
-GET /api/tasks √
-
-用途：查询任务列表（含当前周期进度与领奖状态）。
-
-### api-tasks-checkin
-POST /api/tasks/checkin ×
-
-用途：到店打卡（写入 checkin_log 并推动任务进度）。
-
-### api-tasks-claim
-POST /api/tasks/{taskCode}/claim ×
-
-用途：领取任务奖励（需幂等，避免重复发奖）。
-
----
-
-## module-item-app
-Item 模块（小程序：积分商品） √
-
-### api-goods-list
-GET /api/goods √
-
-用途：商品列表（用户侧展示）。
-
-### api-goods-get
-GET /api/goods/{id} √
-
-用途：商品详情（用户侧展示）。
-
----
-
-## module-redeem-app
-Redeem 模块（小程序：兑换订单） √
-
-请求头（以下接口通用）：
-
-- `Authorization: Bearer <token>`
-
-### api-redeem-orders-create
-POST /api/redeem/orders √
-
-用途：创建兑换订单（userId 从 token 获取；扣减积分并生成订单号）。
-
-### api-redeem-orders-list
-GET /api/redeem/orders √
-
-用途：查询我的兑换订单列表。
-
-### api-redeem-orders-get
-GET /api/redeem/orders/{id} √
-
-用途：查询我的兑换订单详情（含 items）。
-
-### api-redeem-orders-cancel
-PUT /api/redeem/orders/{id}/cancel √
-
-用途：取消我的兑换订单（仅允许 CREATED -> CANCELED）。
-
----
-
 ## module-admin
 Admin 模块（管理员：登录/审计/关键操作） ×
 
@@ -1589,40 +1582,126 @@ POST /admin/auth/login ×
 
 用途：管理员登录并签发管理员 token。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L682-L694)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 当前为占位实现：直接返回固定 token（`admin_token_placeholder`）。
+
 ### api-admin-auth-me
 GET /admin/auth/me ×
 
 用途：获取当前管理员信息（用于后台鉴权/展示）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L696-L709)
+
+实现逻辑：
+
+1. 校验方法为 `GET`。
+2. 当前为占位实现：直接返回固定管理员信息（`id=1, username=admin`）。
 
 ### api-admin-auth-logout
 POST /admin/auth/logout ×
 
 用途：管理员登出（可选：token 失效/黑名单）。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L711-L721)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 当前为占位实现：直接返回 `logout=true`。
+
 ### api-admin-audit-logs
 GET /admin/audit/logs √
 
 用途：查询管理员关键操作审计日志。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L723-L792)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `db` 已注入。
+2. 解析 query：`offset/limit/adminId`（分页兜底 limit 默认 20，最大 200）。
+3. 查询 `admin_audit_log` 表，按 `id DESC` 返回列表。
+4. `detail_json` 以 JSON 字节读取并回填到响应 `detailJson`。
+5. 返回 `SendJSuccess`。
 
 ### api-admin-points-adjust
 POST /admin/points/adjust ×
 
 用途：管理员给用户赠送/扣减积分（需落审计与流水）。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L794-L804)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 当前为占位实现：直接返回 `adjusted=true`。
+
 ### api-admin-users-drinks-use
 PUT /admin/users/{id}/drinks/use ×
 
 用途：管理员核销用户饮品数量（点一次 -1）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L806-L817)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`。
+2. 解析 path 参数 `id`（当前未做业务校验）。
+3. 当前为占位实现：直接返回 `used=true`。
 
 ### api-admin-tournament-results-publish
 POST /admin/tournaments/{id}/results/publish ×
 
 用途：发布赛事排名（tournament_result）并记录发布人。
 
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L819-L830)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 解析 path 参数 `id`（当前未做业务校验）。
+3. 当前为占位实现：直接返回 `published=true`。
+
 ### api-admin-tournament-awards-grant
 POST /admin/tournaments/{id}/awards/grant ×
 
 用途：给赛事前 N 名发积分奖励（需幂等，避免重复发奖）。
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L832-L843)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 解析 path 参数 `id`（当前未做业务校验）。
+3. 当前为占位实现：直接返回 `granted=true`。
 
 ---
 
@@ -1634,10 +1713,12 @@ POST /admin/media/upload ×
 
 用途：上传封面/图片等媒体文件，返回可访问 URL。
 
----
+实现位置：
 
-## module-unimplemented
-小程序侧接口汇总（部分未完成） ×
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L845-L858)
 
-本段用于保留一个“规划接口”总入口；具体接口已拆分到上面的模块段落（User/Points/VIP/Tournament/Task/Item/Redeem/Admin/Media）。
+实现逻辑：
 
+1. 校验方法为 `POST`。
+2. 当前为占位实现：直接返回空 `url` 与 `createdAt`（RFC3339）。

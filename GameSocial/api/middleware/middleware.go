@@ -53,7 +53,8 @@ func InjectUserIDFromToken(tokenSecret string) Middleware {
 	secret := []byte(strings.TrimSpace(tokenSecret))
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if len(secret) != 0 && r != nil && r.Header.Get("X-User-Id") == "" {
+			if len(secret) != 0 && r != nil {
+				r.Header.Del("X-User-Id")
 				authz := strings.TrimSpace(r.Header.Get("Authorization"))
 				if authz != "" {
 					token := authz

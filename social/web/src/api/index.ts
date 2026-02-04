@@ -80,12 +80,23 @@ export const listTournaments = async (offset = 0, limit = 50) => {
   return listFrom<AnyRecord>(res)
 }
 
+export const getTournament = async (id: number) => {
+  return await request<AnyRecord>(`/api/tournaments/${id}`)
+}
+
 export const joinTournament = async (id: number) => {
   await request(`/api/tournaments/${id}/join`, { method: 'POST' })
 }
 
 export const cancelTournamentJoin = async (id: number) => {
   await request(`/api/tournaments/${id}/cancel`, { method: 'PUT' })
+}
+
+export const getTournamentResults = async (id: number, offset = 0, limit = 50) => {
+  const res = await request<AnyRecord>(`/api/tournaments/${id}/results?offset=${offset}&limit=${limit}`)
+  const items = listFrom<AnyRecord>(res)
+  const my = res && typeof res === 'object' ? ((res as { my?: unknown }).my as unknown) : undefined
+  return { items, my }
 }
 
 export const adminListGoods = async () => {

@@ -92,20 +92,57 @@ onMounted(() => {
         <div class="row">
           <div>
             <div class="title">{{ it.name || it.taskCode || '任务' }}</div>
+            <div class="progress-bar">
+              <div
+                class="progress-fill"
+                :style="{ width: Math.min(((it.progress ?? 0) / (it.targetCount ?? 1)) * 100, 100) + '%' }"
+              />
+            </div>
             <div class="muted" style="margin-top: 6px">
               进度：{{ it.progress ?? 0 }}/{{ it.targetCount ?? 0 }} · 奖励：{{ it.rewardPoints ?? '-' }}
             </div>
           </div>
           <div class="spacer" />
           <button
+            v-if="it.claimed"
+            class="btn btn--ghost"
+            disabled
+          >
+            已领
+          </button>
+          <button
+            v-else-if="(it.progress ?? 0) >= (it.targetCount ?? 1)"
             class="btn"
-            :disabled="!it.taskCode || it.claimed || (it.targetCount ?? 0) > (it.progress ?? 0)"
             @click="it.taskCode && claim(it.taskCode)"
           >
-            {{ it.claimed ? '已领取' : '领取' }}
+            领取
+          </button>
+          <button
+            v-else
+            class="btn btn--ghost"
+            disabled
+          >
+            未完成
           </button>
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  margin-top: 8px;
+  overflow: hidden;
+  max-width: 120px;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--primary2);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+</style>

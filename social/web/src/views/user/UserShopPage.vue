@@ -228,7 +228,7 @@ onMounted(() => {
       <div class="row section__head">
         <div>
           <div class="title">概览</div>
-          <div class="muted" style="margin-top: 6px">像美团一样分区：先选商品，再在订单中心管理状态。</div>
+          <div class="muted" style="margin-top: 6px">查看积分概览、商品列表与订单状态。</div>
         </div>
         <div class="spacer" />
         <div class="chip">

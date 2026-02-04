@@ -1,143 +1,164 @@
 -- GameSocial 初始化脚本：建库建表 + 预置演示数据（本地开发/调试用）。
 -- 说明：
--- 1) 脚本尽量可重复执行：大多数对象使用 IF NOT EXISTS / ON DUPLICATE KEY UPDATE。
+-- 1) 脚本可重复执行：建表前会 DROP TABLE IF EXISTS；预置数据使用 ON DUPLICATE KEY UPDATE。
 -- 2) admin_user.password_hash 的 'CHANGE_ME' 只是占位，正式使用前需要替换为真实密码哈希。
 
 -- 创建数据库（utf8mb4 便于存中文昵称/表情等）。
 CREATE DATABASE IF NOT EXISTS gamesocial
-  DEFAULT CHARACTER SET utf8mb4
-  DEFAULT COLLATE utf8mb4_unicode_ci;
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
 
 -- 选择业务库。
-USE gamesocial;
+USE `gamesocial`;
+
+-- 重置表结构：如果表已存在则先删除再创建（开发/调试用）。
+DROP TABLE IF EXISTS
+  checkin_log,
+  user_task_progress,
+  task_def,
+  tournament_award,
+  tournament_result,
+  tournament_participant,
+  tournament,
+  redeem_order_item,
+  redeem_order,
+  user_drink_balance,
+  goods,
+  points_ledger,
+  points_account,
+  admin_audit_log,
+  vip_subscription,
+  user_level,
+  admin_user,
+  `user`;
 
 -- user：小程序用户主表（openid 唯一）。
-CREATE TABLE IF NOT EXISTS `user` (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  openid VARCHAR(64) NOT NULL,
-  unionid VARCHAR(64) NULL,
-  nickname VARCHAR(64) NULL,
-  avatar_url VARCHAR(512) NULL,
-  status TINYINT NOT NULL DEFAULT 1,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `user` (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  openid VARCHAR(64) NOT NULL COMMENT '微信 openid（唯一标识小程序用户）',
+  unionid VARCHAR(64) NULL COMMENT '微信 unionid（同主体下多应用统一标识，可为空）',
+  nickname VARCHAR(64) NULL COMMENT '用户昵称',
+  avatar_url VARCHAR(512) NULL COMMENT '头像 URL',
+  status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1=正常；0=禁用',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_user_openid (openid),
   KEY idx_user_unionid (unionid)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='小程序用户主表（openid 唯一）';
 
 -- user_level：用户等级/经验表（与 user 一对一）。
-CREATE TABLE IF NOT EXISTS user_level (
-  user_id BIGINT UNSIGNED NOT NULL,
-  level INT NOT NULL DEFAULT 1,
-  exp BIGINT NOT NULL DEFAULT 0,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE user_level (
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id，一对一）',
+  level INT NOT NULL DEFAULT 1 COMMENT '等级（从 1 开始）',
+  exp BIGINT NOT NULL DEFAULT 0 COMMENT '经验值（累积）',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (user_id),
   CONSTRAINT fk_user_level_user FOREIGN KEY (user_id) REFERENCES `user`(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户等级/经验（与 user 一对一）';
 
 -- vip_subscription：VIP 订阅记录（可用于月卡等）。
-CREATE TABLE IF NOT EXISTS vip_subscription (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NOT NULL,
-  plan VARCHAR(32) NOT NULL,
-  start_at DATETIME NOT NULL,
-  end_at DATETIME NOT NULL,
-  status VARCHAR(16) NOT NULL,
-  pay_order_no VARCHAR(64) NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE vip_subscription (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id）',
+  plan VARCHAR(32) NOT NULL COMMENT '订阅套餐编码（例如 MONTH_CARD）',
+  start_at DATETIME NOT NULL COMMENT '生效时间',
+  end_at DATETIME NOT NULL COMMENT '到期时间',
+  status VARCHAR(16) NOT NULL COMMENT '订阅状态（例如 ACTIVE/EXPIRED/CANCELED）',
+  pay_order_no VARCHAR(64) NULL COMMENT '支付订单号（用于幂等/对账，可为空）',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_vip_subscription_pay_order_no (pay_order_no),
   KEY idx_vip_subscription_user_end (user_id, end_at),
   CONSTRAINT fk_vip_subscription_user FOREIGN KEY (user_id) REFERENCES `user`(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VIP 订阅记录（用于月卡/会员等）';
 
 -- admin_user：后台管理员账号表（当前只预置一个管理员）。
-CREATE TABLE IF NOT EXISTS admin_user (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  status TINYINT NOT NULL DEFAULT 1,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE admin_user (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  username VARCHAR(64) NOT NULL COMMENT '登录用户名（唯一）',
+  password_hash VARCHAR(255) NOT NULL COMMENT '密码哈希（禁止存明文）',
+  status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1=启用；0=禁用',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_admin_user_username (username)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台管理员账号';
 
 -- admin_audit_log：管理员关键操作审计日志。
-CREATE TABLE IF NOT EXISTS admin_audit_log (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  admin_id BIGINT UNSIGNED NOT NULL,
-  action VARCHAR(64) NOT NULL,
-  biz_type VARCHAR(32) NULL,
-  biz_id VARCHAR(64) NULL,
-  detail_json JSON NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE admin_audit_log (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  admin_id BIGINT UNSIGNED NOT NULL COMMENT '管理员 ID（对应 admin_user.id）',
+  action VARCHAR(64) NOT NULL COMMENT '操作动作（如 POINTS_ADJUST/DRINK_USE）',
+  biz_type VARCHAR(32) NULL COMMENT '业务类型（如 USER/REDEEM_ORDER，可为空）',
+  biz_id VARCHAR(64) NULL COMMENT '业务标识（如 userId/orderNo，可为空）',
+  detail_json JSON NULL COMMENT '操作详情 JSON（扩展字段）',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   KEY idx_admin_audit_log_admin_id (admin_id),
   KEY idx_admin_audit_log_action (action),
   KEY idx_admin_audit_log_biz (biz_type, biz_id),
   CONSTRAINT fk_admin_audit_log_admin FOREIGN KEY (admin_id) REFERENCES admin_user(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员关键操作审计日志';
 
 -- points_account：积分余额快照（用于快速展示）。
-CREATE TABLE IF NOT EXISTS points_account (
-  user_id BIGINT UNSIGNED NOT NULL,
-  balance BIGINT NOT NULL DEFAULT 0,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE points_account (
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id，一对一）',
+  balance BIGINT NOT NULL DEFAULT 0 COMMENT '积分余额（快照）',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (user_id),
   CONSTRAINT fk_points_account_user FOREIGN KEY (user_id) REFERENCES `user`(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分账户余额快照（用于快速查询）';
 
 -- points_ledger：积分流水账本（用唯一键保证幂等）。
-CREATE TABLE IF NOT EXISTS points_ledger (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NOT NULL,
-  change_amount BIGINT NOT NULL,
-  balance_after BIGINT NOT NULL,
-  biz_type VARCHAR(32) NOT NULL,
-  biz_id VARCHAR(64) NOT NULL,
-  remark VARCHAR(255) NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE points_ledger (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id）',
+  change_amount BIGINT NOT NULL COMMENT '本次积分变动（正=增加；负=扣减）',
+  balance_after BIGINT NOT NULL COMMENT '变动后的余额（用于展示/校验）',
+  biz_type VARCHAR(32) NOT NULL COMMENT '业务类型（用于幂等/追踪，例如 INIT/CHECKIN/REDEEM）',
+  biz_id VARCHAR(64) NOT NULL COMMENT '业务唯一标识（同 user_id+biz_type 唯一）',
+  remark VARCHAR(255) NULL COMMENT '备注说明（可为空）',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_points_ledger_idempotent (user_id, biz_type, biz_id),
   KEY idx_points_ledger_user_created (user_id, created_at),
   CONSTRAINT fk_points_ledger_user FOREIGN KEY (user_id) REFERENCES `user`(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分流水账本（含幂等键）';
 
 -- goods：积分商品（饮品/毛巾等）。
-CREATE TABLE IF NOT EXISTS goods (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  name VARCHAR(128) NOT NULL,
-  cover_url VARCHAR(512) NULL,
-  points_price BIGINT NOT NULL,
-  stock INT NOT NULL DEFAULT 0,
-  status TINYINT NOT NULL DEFAULT 1,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE goods (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  name VARCHAR(128) NOT NULL COMMENT '商品名称',
+  cover_url VARCHAR(512) NULL COMMENT '封面图 URL（可为空）',
+  points_price BIGINT NOT NULL COMMENT '兑换所需积分（>=0）',
+  stock INT NOT NULL DEFAULT 0 COMMENT '库存（>=0；可用于实物）',
+  status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1=上架；0=下架/删除',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   KEY idx_goods_status (status),
   KEY idx_goods_created_at (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分商品（饮品/毛巾等）';
 
 -- user_drink_balance：用户可用饮品数量（总量，不区分品类）。
-CREATE TABLE IF NOT EXISTS user_drink_balance (
-  user_id BIGINT UNSIGNED NOT NULL,
-  quantity INT NOT NULL DEFAULT 0,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE user_drink_balance (
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id，一对一）',
+  quantity INT NOT NULL DEFAULT 0 COMMENT '可用饮品数量（杯数）',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (user_id),
   CONSTRAINT fk_user_drink_balance_user FOREIGN KEY (user_id) REFERENCES `user`(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户饮品数量余额（总量，不区分品类）';
 
 -- redeem_order：积分兑换商品订单（饮料兑换不走订单）。
-CREATE TABLE IF NOT EXISTS redeem_order (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  order_no VARCHAR(64) NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
-  status VARCHAR(16) NOT NULL,
-  total_points BIGINT NOT NULL DEFAULT 0,
-  used_by_admin_id BIGINT UNSIGNED NULL,
-  used_at DATETIME NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE redeem_order (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  order_no VARCHAR(64) NOT NULL COMMENT '订单号（业务唯一，用于展示/幂等）',
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '下单用户 ID（对应 user.id）',
+  status VARCHAR(16) NOT NULL COMMENT '订单状态（例如 CREATED/USED/CANCELED）',
+  total_points BIGINT NOT NULL DEFAULT 0 COMMENT '订单总积分（汇总值）',
+  used_by_admin_id BIGINT UNSIGNED NULL COMMENT '核销管理员 ID（对应 admin_user.id，可为空）',
+  used_at DATETIME NULL COMMENT '核销时间（可为空）',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_redeem_order_order_no (order_no),
   KEY idx_redeem_order_user (user_id),
@@ -145,133 +166,133 @@ CREATE TABLE IF NOT EXISTS redeem_order (
   KEY idx_redeem_order_created_at (created_at),
   CONSTRAINT fk_redeem_order_user FOREIGN KEY (user_id) REFERENCES `user`(id),
   CONSTRAINT fk_redeem_order_used_by_admin FOREIGN KEY (used_by_admin_id) REFERENCES admin_user(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分兑换订单（用于实物/券类核销）';
 
 -- redeem_order_item：兑换订单明细行。
-CREATE TABLE IF NOT EXISTS redeem_order_item (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  redeem_order_id BIGINT UNSIGNED NOT NULL,
-  goods_id BIGINT UNSIGNED NOT NULL,
-  quantity INT NOT NULL DEFAULT 1,
-  points_price BIGINT NOT NULL,
+CREATE TABLE redeem_order_item (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  redeem_order_id BIGINT UNSIGNED NOT NULL COMMENT '兑换订单 ID（对应 redeem_order.id）',
+  goods_id BIGINT UNSIGNED NOT NULL COMMENT '商品 ID（对应 goods.id）',
+  quantity INT NOT NULL DEFAULT 1 COMMENT '数量（>=1）',
+  points_price BIGINT NOT NULL COMMENT '下单时商品积分单价（快照）',
   PRIMARY KEY (id),
   KEY idx_redeem_order_item_order (redeem_order_id),
   CONSTRAINT fk_redeem_order_item_order FOREIGN KEY (redeem_order_id) REFERENCES redeem_order(id),
   CONSTRAINT fk_redeem_order_item_goods FOREIGN KEY (goods_id) REFERENCES goods(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='兑换订单明细行（商品快照）';
 
 -- tournament：赛事表。
-CREATE TABLE IF NOT EXISTS tournament (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  title VARCHAR(128) NOT NULL,
-  content TEXT NULL,
-  cover_url VARCHAR(512) NULL,
-  start_at DATETIME NOT NULL,
-  end_at DATETIME NOT NULL,
-  status VARCHAR(16) NOT NULL,
-  created_by_admin_id BIGINT UNSIGNED NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE tournament (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  title VARCHAR(128) NOT NULL COMMENT '赛事标题',
+  content TEXT NULL COMMENT '赛事内容/详情（可为空）',
+  cover_url VARCHAR(512) NULL COMMENT '封面图 URL（可为空）',
+  start_at DATETIME NOT NULL COMMENT '开始时间',
+  end_at DATETIME NOT NULL COMMENT '结束时间',
+  status VARCHAR(16) NOT NULL COMMENT '赛事状态（例如 DRAFT/PUBLISHED/ENDED/CANCELED）',
+  created_by_admin_id BIGINT UNSIGNED NOT NULL COMMENT '创建管理员 ID（对应 admin_user.id）',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   KEY idx_tournament_start_at (start_at),
   KEY idx_tournament_end_at (end_at),
   KEY idx_tournament_status (status),
   CONSTRAINT fk_tournament_created_by_admin FOREIGN KEY (created_by_admin_id) REFERENCES admin_user(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事主表';
 
 -- tournament_participant：赛事报名关系表（唯一约束防止重复报名）。
-CREATE TABLE IF NOT EXISTS tournament_participant (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  tournament_id BIGINT UNSIGNED NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
-  join_status VARCHAR(16) NOT NULL,
-  joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE tournament_participant (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  tournament_id BIGINT UNSIGNED NOT NULL COMMENT '赛事 ID（对应 tournament.id）',
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id）',
+  join_status VARCHAR(16) NOT NULL COMMENT '报名状态（例如 JOINED/CANCELED）',
+  joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '报名时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_tournament_participant (tournament_id, user_id),
   KEY idx_tournament_participant_user_joined (user_id, joined_at),
   CONSTRAINT fk_tournament_participant_tournament FOREIGN KEY (tournament_id) REFERENCES tournament(id),
   CONSTRAINT fk_tournament_participant_user FOREIGN KEY (user_id) REFERENCES `user`(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事报名关系（防重复报名）';
 
 -- tournament_result：赛事排名结果表（tournament_id + user_id 唯一）。
-CREATE TABLE IF NOT EXISTS tournament_result (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  tournament_id BIGINT UNSIGNED NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
-  rank_no INT NOT NULL,
-  score INT NULL,
-  published_by_admin_id BIGINT UNSIGNED NOT NULL,
-  published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE tournament_result (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  tournament_id BIGINT UNSIGNED NOT NULL COMMENT '赛事 ID（对应 tournament.id）',
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id）',
+  rank_no INT NOT NULL COMMENT '名次（从 1 开始）',
+  score INT NULL COMMENT '成绩/分数（可为空）',
+  published_by_admin_id BIGINT UNSIGNED NOT NULL COMMENT '发布管理员 ID（对应 admin_user.id）',
+  published_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_tournament_result (tournament_id, user_id),
   KEY idx_tournament_result_rank (tournament_id, rank_no),
   CONSTRAINT fk_tournament_result_tournament FOREIGN KEY (tournament_id) REFERENCES tournament(id),
   CONSTRAINT fk_tournament_result_user FOREIGN KEY (user_id) REFERENCES `user`(id),
   CONSTRAINT fk_tournament_result_published_by_admin FOREIGN KEY (published_by_admin_id) REFERENCES admin_user(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事成绩/排名结果';
 
 -- tournament_award：赛事发奖记录（user_id + biz_id 唯一，用于幂等）。
-CREATE TABLE IF NOT EXISTS tournament_award (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  tournament_id BIGINT UNSIGNED NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
-  award_points BIGINT NOT NULL,
-  biz_id VARCHAR(64) NOT NULL,
-  created_by_admin_id BIGINT UNSIGNED NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE tournament_award (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  tournament_id BIGINT UNSIGNED NOT NULL COMMENT '赛事 ID（对应 tournament.id）',
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '获奖用户 ID（对应 user.id）',
+  award_points BIGINT NOT NULL COMMENT '发放积分数量（>=0）',
+  biz_id VARCHAR(64) NOT NULL COMMENT '幂等业务标识（用于防重复发奖）',
+  created_by_admin_id BIGINT UNSIGNED NOT NULL COMMENT '发奖管理员 ID（对应 admin_user.id）',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_tournament_award_user_biz (user_id, biz_id),
   KEY idx_tournament_award_tournament_created (tournament_id, created_at),
   CONSTRAINT fk_tournament_award_tournament FOREIGN KEY (tournament_id) REFERENCES tournament(id),
   CONSTRAINT fk_tournament_award_user FOREIGN KEY (user_id) REFERENCES `user`(id),
   CONSTRAINT fk_tournament_award_created_by_admin FOREIGN KEY (created_by_admin_id) REFERENCES admin_user(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事发奖记录（含幂等键）';
 
 -- task_def：任务定义（每日/每周/每月）。
-CREATE TABLE IF NOT EXISTS task_def (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  task_code VARCHAR(64) NOT NULL,
-  name VARCHAR(128) NOT NULL,
-  period_type VARCHAR(16) NOT NULL,
-  target_count INT NOT NULL,
-  reward_points BIGINT NOT NULL,
-  status TINYINT NOT NULL DEFAULT 1,
-  rule_json JSON NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE task_def (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  task_code VARCHAR(64) NOT NULL COMMENT '任务编码（唯一，用于程序引用）',
+  name VARCHAR(128) NOT NULL COMMENT '任务名称',
+  period_type VARCHAR(16) NOT NULL COMMENT '周期类型（DAILY/WEEKLY/MONTHLY）',
+  target_count INT NOT NULL COMMENT '目标次数（达到后可领奖）',
+  reward_points BIGINT NOT NULL COMMENT '奖励积分数量（>=0）',
+  status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1=启用；0=禁用',
+  rule_json JSON NULL COMMENT '任务规则扩展 JSON（可为空）',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_task_def_task_code (task_code),
   KEY idx_task_def_status (status),
   KEY idx_task_def_period_type (period_type)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='任务定义（周期/目标/奖励）';
 
 -- user_task_progress：用户任务进度（user_id + task_id + period_key 唯一，用于同周期幂等更新）。
-CREATE TABLE IF NOT EXISTS user_task_progress (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NOT NULL,
-  task_id BIGINT UNSIGNED NOT NULL,
-  period_key VARCHAR(16) NOT NULL,
-  progress_count INT NOT NULL DEFAULT 0,
-  status VARCHAR(16) NOT NULL,
-  completed_at DATETIME NULL,
-  rewarded_at DATETIME NULL,
+CREATE TABLE user_task_progress (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id）',
+  task_id BIGINT UNSIGNED NOT NULL COMMENT '任务定义 ID（对应 task_def.id）',
+  period_key VARCHAR(16) NOT NULL COMMENT '周期键（如 202601、2026W05，用于同周期去重）',
+  progress_count INT NOT NULL DEFAULT 0 COMMENT '当前完成次数',
+  status VARCHAR(16) NOT NULL COMMENT '进度状态（例如 IN_PROGRESS/COMPLETED/REWARDED）',
+  completed_at DATETIME NULL COMMENT '完成时间（可为空）',
+  rewarded_at DATETIME NULL COMMENT '领奖时间（可为空）',
   PRIMARY KEY (id),
   UNIQUE KEY uk_user_task_progress (user_id, task_id, period_key),
   KEY idx_user_task_progress_user_period (user_id, period_key),
   CONSTRAINT fk_user_task_progress_user FOREIGN KEY (user_id) REFERENCES `user`(id),
   CONSTRAINT fk_user_task_progress_task FOREIGN KEY (task_id) REFERENCES task_def(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户任务进度（按周期维度幂等）';
 
 -- checkin_log：到店打卡明细。
-CREATE TABLE IF NOT EXISTS checkin_log (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NOT NULL,
-  checkin_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  source VARCHAR(16) NOT NULL,
+CREATE TABLE checkin_log (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id）',
+  checkin_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '打卡时间',
+  source VARCHAR(16) NOT NULL COMMENT '打卡来源（例如 MANUAL/WECHAT/GPS）',
   PRIMARY KEY (id),
   KEY idx_checkin_log_user (user_id),
   KEY idx_checkin_log_checkin_at (checkin_at),
   CONSTRAINT fk_checkin_log_user FOREIGN KEY (user_id) REFERENCES `user`(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='到店打卡记录';
 
 -- 预置管理员账号（开发用）。
 INSERT INTO admin_user (id, username, password_hash, status, created_at, updated_at)

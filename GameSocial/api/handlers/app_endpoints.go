@@ -33,10 +33,6 @@ func userIDFromRequest(r *http.Request) uint64 {
 	if id := parseUint64(r.Header.Get("X-User-Id")); id != 0 {
 		return id
 	}
-	q := r.URL.Query()
-	if id := parseUint64(q.Get("userId")); id != 0 {
-		return id
-	}
 	return 0
 }
 

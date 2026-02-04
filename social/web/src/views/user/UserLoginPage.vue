@@ -51,9 +51,9 @@ const login = async () => {
       <div class="grid" style="max-width: 520px; margin: 0 auto; padding-top: 18vh">
         <div class="card">
           <div class="title">登录</div>
-          <div class="help" style="margin-top: 8px">当前临时方案：输入 openid，走 /api/auth/wechat/login 换取 token。</div>
+          <div class="help" style="margin-top: 8px">请输入账号凭证以继续访问。</div>
           <div class="grid" style="margin-top: 12px">
-            <input v-model="openIdDraft" class="input" placeholder="请输入 openid" />
+            <input v-model="openIdDraft" class="input" placeholder="请输入账号凭证" />
             <button class="btn" :disabled="loading" @click="login">{{ loading ? '登录中…' : '登录' }}</button>
           </div>
         </div>

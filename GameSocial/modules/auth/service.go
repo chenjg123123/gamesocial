@@ -84,7 +84,7 @@ func (s *service) WechatLogin(ctx context.Context, code string) (LoginResult, er
 	if err != nil {
 		return LoginResult{}, err
 	}
-
+	log.Println(token)
 	return LoginResult{
 		Token: token,
 		User:  u,
@@ -108,7 +108,10 @@ func (s *service) OpenIDLogin(ctx context.Context, openID string) (LoginResult, 
 		return LoginResult{}, fmt.Errorf("user is banned")
 	}
 
-	token := ""
+	token, err := MakeTokenV1(u.ID, time.Now().Add(s.tokenTTL), s.tokenSecret)
+	if err != nil {
+		return LoginResult{}, err
+	}
 	if len(s.tokenSecret) != 0 && s.tokenTTL > 0 {
 		t, err := MakeTokenV1(u.ID, time.Now().Add(s.tokenTTL), s.tokenSecret)
 		if err != nil {

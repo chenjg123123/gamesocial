@@ -62,5 +62,41 @@ onMounted(() => {
         <button class="btn btn--ghost" :disabled="loading" @click="refresh">刷新</button>
       </div>
     </div>
+
+    <div class="grid" style="grid-template-columns: repeat(2, 1fr)">
+      <RouterLink to="/user/tournaments" class="card card--flat action-card" style="text-decoration: none">
+        <div class="action-icon">🏆</div>
+        <div class="title">赛事中心</div>
+        <div class="muted" style="font-size: 13px; margin-top: 4px">查看与报名近期赛事</div>
+      </RouterLink>
+      <RouterLink to="/user/tasks" class="card card--flat action-card" style="text-decoration: none">
+        <div class="action-icon">✅</div>
+        <div class="title">任务打卡</div>
+        <div class="muted" style="font-size: 13px; margin-top: 4px">完成任务赚取积分</div>
+      </RouterLink>
+      <RouterLink to="/user/shop" class="card card--flat action-card" style="text-decoration: none">
+        <div class="action-icon">🛍️</div>
+        <div class="title">积分商城</div>
+        <div class="muted" style="font-size: 13px; margin-top: 4px">兑换饮品与周边</div>
+      </RouterLink>
+      <RouterLink to="/user/me" class="card card--flat action-card" style="text-decoration: none">
+        <div class="action-icon">👤</div>
+        <div class="title">个人中心</div>
+        <div class="muted" style="font-size: 13px; margin-top: 4px">查看流水与设置</div>
+      </RouterLink>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.action-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  transition: all 0.2s;
+}
+.action-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+</style>

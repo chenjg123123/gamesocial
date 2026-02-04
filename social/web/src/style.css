@@ -11,7 +11,7 @@
   --success: #10b981;
   --radius: 16px;
   --radius-sm: 12px;
-  --shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  --shadow-hover: 0 20px 48px rgba(0, 0, 0, 0.45);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   color: var(--text);
   background: radial-gradient(1000px 600px at 10% 0%, rgba(124, 58, 237, 0.35), transparent 55%),
@@ -19,6 +19,16 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 html,
@@ -33,6 +43,11 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+a:hover {
+  opacity: 0.8;
 }
 
 * {
@@ -46,6 +61,7 @@ a {
 .page {
   min-height: 100vh;
   padding: 14px 14px 96px;
+  animation: fade-in 0.4s ease-out;
 }
 
 .container {
@@ -57,9 +73,10 @@ a {
   position: sticky;
   top: 0;
   z-index: 20;
-  backdrop-filter: blur(12px);
-  background: rgba(11, 18, 32, 0.6);
+  backdrop-filter: blur(16px);
+  background: rgba(11, 18, 32, 0.75);
   border-bottom: 1px solid var(--line);
+  transition: all 0.3s ease;
 }
 
 .topbar__inner {
@@ -99,6 +116,11 @@ a {
   object-fit: cover;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.06);
+  transition: transform 0.2s;
+}
+
+.avatar:hover {
+  transform: scale(1.05);
 }
 
 .chips {
@@ -115,6 +137,11 @@ a {
   background: rgba(255, 255, 255, 0.04);
   color: rgba(255, 255, 255, 0.82);
   font-size: 12px;
+  transition: all 0.2s;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .card {
@@ -123,10 +150,22 @@ a {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 12px;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
 }
 
 .card--flat {
   box-shadow: none;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.card--flat:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .row {
@@ -142,16 +181,30 @@ a {
 .btn {
   border: 0;
   border-radius: 999px;
-  padding: 10px 12px;
+  padding: 10px 16px;
   color: #fff;
   background: linear-gradient(135deg, var(--primary), var(--primary2));
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+  filter: brightness(1.1);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
 }
 
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn--ghost {
@@ -159,12 +212,24 @@ a {
   border: 1px solid var(--line);
   color: var(--text);
   font-weight: 600;
+  box-shadow: none;
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .btn--danger {
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.35);
   color: #fecaca;
+  box-shadow: none;
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
 .input {
@@ -175,6 +240,13 @@ a {
   color: var(--text);
   padding: 10px 12px;
   outline: none;
+  transition: all 0.2s;
+}
+
+.input:focus {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--primary2);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
 }
 
 .input::placeholder {
@@ -191,19 +263,36 @@ a {
   gap: 10px;
   overflow: auto;
   padding: 10px 14px;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
-  padding: 8px 10px;
+  padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.04);
   white-space: nowrap;
+  transition: all 0.2s;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
 .tab--active {
   background: rgba(124, 58, 237, 0.18);
   border-color: rgba(124, 58, 237, 0.55);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
 }
 
 .bottombar {
@@ -212,39 +301,71 @@ a {
   right: 0;
   bottom: 0;
   z-index: 30;
-  backdrop-filter: blur(14px);
-  background: rgba(11, 18, 32, 0.65);
+  backdrop-filter: blur(20px);
+  background: rgba(11, 18, 32, 0.75);
   border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  transition: transform 0.3s;
 }
 
 .bottombar__inner {
-  height: 70px;
+  height: 64px;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 6px 10px;
   max-width: 960px;
   margin: 0 auto;
 }
 
 .navitem {
-  display: grid;
-  place-items: center;
-  gap: 2px;
-  padding: 10px 6px;
-  border-radius: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  border: 0;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.navitem:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .navitem--active {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--primary2);
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.navitem--active::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary2);
+  box-shadow: 0 0 8px var(--primary2);
+}
+
+.navitem__icon {
+  font-size: 20px;
+  margin-bottom: 2px;
+  transition: transform 0.2s;
+}
+
+.navitem:active .navitem__icon {
+  transform: scale(0.9);
 }
 
 .navitem__label {
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
   line-height: 1;
 }
 

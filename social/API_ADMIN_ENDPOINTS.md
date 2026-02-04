@@ -1,85 +1,57 @@
-# GameSocial 功能接口总览（按模块拆分）
+# GameSocial 后台管理端接口（Admin）
 
-本文档基于《模块化架构设计》与当前后端实际已注册的路由整理，覆盖“已实现 + 规划待实现”的全部 HTTP 接口；已实现的接口在标题后标注 `√`，未实现标注 `×`。
+本文档整理后台管理端（`/admin/*`）接口说明，包含：用途、实现位置、设计思路、请求格式、响应格式。已实现接口标注 `√`，未实现标注 `×`。
 
-- 快速入口：后台管理端接口见 [API_ADMIN_ENDPOINTS.md](API_ADMIN_ENDPOINTS.md)
-- 快速入口：客户端接口见 [API_CLIENT_ENDPOINTS.md](API_CLIENT_ENDPOINTS.md)
+快速入口：
+
+- 客户端接口：[API_CLIENT_ENDPOINTS.md](API_CLIENT_ENDPOINTS.md)
+- 总览：[API_ALL_ENDPOINTS.md](API_ALL_ENDPOINTS.md)
 
 ## 接口目录
 
-- 后台管理端接口（Admin）：[API_ADMIN_ENDPOINTS.md](API_ADMIN_ENDPOINTS.md)
-- 客户端接口（API）：[API_CLIENT_ENDPOINTS.md](API_CLIENT_ENDPOINTS.md)
+- √ [健康检查模块](#module-health)
+  - √ [GET /health](#api-health)
+- √ [Item 模块（管理员：积分商品管理）](#module-item)
+  - √ [POST /admin/goods](#api-admin-goods-create)
+  - √ [GET /admin/goods](#api-admin-goods-list)
+  - √ [GET /admin/goods/{id}](#api-admin-goods-get)
+  - √ [PUT /admin/goods/{id}](#api-admin-goods-update)
+  - √ [DELETE /admin/goods/{id}](#api-admin-goods-delete)
+- √ [Tournament 模块（管理员：赛事管理）](#module-tournament)
+  - √ [POST /admin/tournaments](#api-admin-tournaments-create)
+  - √ [GET /admin/tournaments](#api-admin-tournaments-list)
+  - √ [GET /admin/tournaments/{id}](#api-admin-tournaments-get)
+  - √ [PUT /admin/tournaments/{id}](#api-admin-tournaments-update)
+  - √ [DELETE /admin/tournaments/{id}](#api-admin-tournaments-delete)
+- √ [Task 模块（管理员：任务定义管理）](#module-task)
+  - √ [POST /admin/task-defs](#api-admin-task-defs-create)
+  - √ [GET /admin/task-defs](#api-admin-task-defs-list)
+  - √ [GET /admin/task-defs/{id}](#api-admin-task-defs-get)
+  - √ [PUT /admin/task-defs/{id}](#api-admin-task-defs-update)
+  - √ [DELETE /admin/task-defs/{id}](#api-admin-task-defs-delete)
+- √ [User 模块（管理员：用户管理）](#module-user)
+  - √ [GET /admin/users](#api-admin-users-list)
+  - √ [GET /admin/users/{id}](#api-admin-users-get)
+  - √ [PUT /admin/users/{id}](#api-admin-users-update)
+- √ [Redeem 模块（管理员：兑换订单管理）](#module-redeem)
+  - √ [POST /admin/redeem/orders](#api-admin-redeem-orders-create)
+  - √ [GET /admin/redeem/orders](#api-admin-redeem-orders-list)
+  - √ [GET /admin/redeem/orders/{id}](#api-admin-redeem-orders-get)
+  - √ [PUT /admin/redeem/orders/{id}/use](#api-admin-redeem-orders-use)
+  - √ [PUT /admin/redeem/orders/{id}/cancel](#api-admin-redeem-orders-cancel)
+- × [Admin 模块（管理员：登录/审计/关键操作）](#module-admin)
+  - × [POST /admin/auth/login](#api-admin-auth-login)
+  - × [GET /admin/auth/me](#api-admin-auth-me)
+  - × [POST /admin/auth/logout](#api-admin-auth-logout)
+  - √ [GET /admin/audit/logs](#api-admin-audit-logs)
+  - × [POST /admin/points/adjust](#api-admin-points-adjust)
+  - × [PUT /admin/users/{id}/drinks/use](#api-admin-users-drinks-use)
+  - × [POST /admin/tournaments/{id}/results/publish](#api-admin-tournament-results-publish)
+  - × [POST /admin/tournaments/{id}/awards/grant](#api-admin-tournament-awards-grant)
+- × [Media 模块（媒体上传/访问）](#module-media)
+  - × [POST /admin/media/upload](#api-admin-media-upload)
 
-## 已注册路由清单（与 cmd/server/main.go#L127-L164 一致）
-
-说明：
-
-- 这一表格展示“当前已注册路由”，与代码注册保持一致；“完成”列用于标识该路由的业务实现完成度。
-- “详情”列跳转到拆分后的接口文档段落。
-
-| 完成 | 模块 | Method | Path | 详情 |
-|---|---|---|---|---|
-| √ | 健康检查 | GET | /health | [GET /health](API_CLIENT_ENDPOINTS.md#api-health) |
-| √ | Auth（小程序登录） | POST | /api/auth/wechat/login | [POST /api/auth/wechat/login](API_CLIENT_ENDPOINTS.md#api-auth-wechat-login) |
-| √ | Item（管理员：积分商品） | POST | /admin/goods | [POST /admin/goods](API_ADMIN_ENDPOINTS.md#api-admin-goods-create) |
-| √ | Item（管理员：积分商品） | GET | /admin/goods | [GET /admin/goods](API_ADMIN_ENDPOINTS.md#api-admin-goods-list) |
-| √ | Item（管理员：积分商品） | GET | /admin/goods/{id} | [GET /admin/goods/{id}](API_ADMIN_ENDPOINTS.md#api-admin-goods-get) |
-| √ | Item（管理员：积分商品） | PUT | /admin/goods/{id} | [PUT /admin/goods/{id}](API_ADMIN_ENDPOINTS.md#api-admin-goods-update) |
-| √ | Item（管理员：积分商品） | DELETE | /admin/goods/{id} | [DELETE /admin/goods/{id}](API_ADMIN_ENDPOINTS.md#api-admin-goods-delete) |
-| √ | Tournament（管理员：赛事） | POST | /admin/tournaments | [POST /admin/tournaments](API_ADMIN_ENDPOINTS.md#api-admin-tournaments-create) |
-| √ | Tournament（管理员：赛事） | GET | /admin/tournaments | [GET /admin/tournaments](API_ADMIN_ENDPOINTS.md#api-admin-tournaments-list) |
-| √ | Tournament（管理员：赛事） | GET | /admin/tournaments/{id} | [GET /admin/tournaments/{id}](API_ADMIN_ENDPOINTS.md#api-admin-tournaments-get) |
-| √ | Tournament（管理员：赛事） | PUT | /admin/tournaments/{id} | [PUT /admin/tournaments/{id}](API_ADMIN_ENDPOINTS.md#api-admin-tournaments-update) |
-| √ | Tournament（管理员：赛事） | DELETE | /admin/tournaments/{id} | [DELETE /admin/tournaments/{id}](API_ADMIN_ENDPOINTS.md#api-admin-tournaments-delete) |
-| √ | Task（管理员：任务定义） | POST | /admin/task-defs | [POST /admin/task-defs](API_ADMIN_ENDPOINTS.md#api-admin-task-defs-create) |
-| √ | Task（管理员：任务定义） | GET | /admin/task-defs | [GET /admin/task-defs](API_ADMIN_ENDPOINTS.md#api-admin-task-defs-list) |
-| √ | Task（管理员：任务定义） | GET | /admin/task-defs/{id} | [GET /admin/task-defs/{id}](API_ADMIN_ENDPOINTS.md#api-admin-task-defs-get) |
-| √ | Task（管理员：任务定义） | PUT | /admin/task-defs/{id} | [PUT /admin/task-defs/{id}](API_ADMIN_ENDPOINTS.md#api-admin-task-defs-update) |
-| √ | Task（管理员：任务定义） | DELETE | /admin/task-defs/{id} | [DELETE /admin/task-defs/{id}](API_ADMIN_ENDPOINTS.md#api-admin-task-defs-delete) |
-| √ | User（管理员：用户） | GET | /admin/users | [GET /admin/users](API_ADMIN_ENDPOINTS.md#api-admin-users-list) |
-| √ | User（管理员：用户） | GET | /admin/users/{id} | [GET /admin/users/{id}](API_ADMIN_ENDPOINTS.md#api-admin-users-get) |
-| √ | User（管理员：用户） | PUT | /admin/users/{id} | [PUT /admin/users/{id}](API_ADMIN_ENDPOINTS.md#api-admin-users-update) |
-| √ | Redeem（管理员：兑换订单） | POST | /admin/redeem/orders | [POST /admin/redeem/orders](API_ADMIN_ENDPOINTS.md#api-admin-redeem-orders-create) |
-| √ | Redeem（管理员：兑换订单） | GET | /admin/redeem/orders | [GET /admin/redeem/orders](API_ADMIN_ENDPOINTS.md#api-admin-redeem-orders-list) |
-| √ | Redeem（管理员：兑换订单） | GET | /admin/redeem/orders/{id} | [GET /admin/redeem/orders/{id}](API_ADMIN_ENDPOINTS.md#api-admin-redeem-orders-get) |
-| √ | Redeem（管理员：兑换订单） | PUT | /admin/redeem/orders/{id}/use | [PUT /admin/redeem/orders/{id}/use](API_ADMIN_ENDPOINTS.md#api-admin-redeem-orders-use) |
-| √ | Redeem（管理员：兑换订单） | PUT | /admin/redeem/orders/{id}/cancel | [PUT /admin/redeem/orders/{id}/cancel](API_ADMIN_ENDPOINTS.md#api-admin-redeem-orders-cancel) |
-| √ | User（小程序：个人资料） | GET | /api/users/me | [GET /api/users/me](API_CLIENT_ENDPOINTS.md#api-users-me-get) |
-| √ | User（小程序：个人资料） | PUT | /api/users/me | [PUT /api/users/me](API_CLIENT_ENDPOINTS.md#api-users-me-update) |
-| √ | Item（小程序：积分商品） | GET | /api/goods | [GET /api/goods](API_CLIENT_ENDPOINTS.md#api-goods-list) |
-| √ | Item（小程序：积分商品） | GET | /api/goods/{id} | [GET /api/goods/{id}](API_CLIENT_ENDPOINTS.md#api-goods-get) |
-| √ | Tournament（小程序：赛事） | GET | /api/tournaments | [GET /api/tournaments](API_CLIENT_ENDPOINTS.md#api-tournaments-list) |
-| √ | Tournament（小程序：赛事） | GET | /api/tournaments/{id} | [GET /api/tournaments/{id}](API_CLIENT_ENDPOINTS.md#api-tournaments-get) |
-| √ | Tournament（小程序：赛事） | POST | /api/tournaments/{id}/join | [POST /api/tournaments/{id}/join](API_CLIENT_ENDPOINTS.md#api-tournaments-join) |
-| √ | Tournament（小程序：赛事） | PUT | /api/tournaments/{id}/cancel | [PUT /api/tournaments/{id}/cancel](API_CLIENT_ENDPOINTS.md#api-tournaments-cancel) |
-| √ | Tournament（小程序：赛事） | GET | /api/tournaments/{id}/results | [GET /api/tournaments/{id}/results](API_CLIENT_ENDPOINTS.md#api-tournaments-results) |
-| √ | Redeem（小程序：兑换订单） | GET | /api/redeem/orders | [GET /api/redeem/orders](API_CLIENT_ENDPOINTS.md#api-redeem-orders-list) |
-| √ | Redeem（小程序：兑换订单） | POST | /api/redeem/orders | [POST /api/redeem/orders](API_CLIENT_ENDPOINTS.md#api-redeem-orders-create) |
-| √ | Redeem（小程序：兑换订单） | GET | /api/redeem/orders/{id} | [GET /api/redeem/orders/{id}](API_CLIENT_ENDPOINTS.md#api-redeem-orders-get) |
-| √ | Redeem（小程序：兑换订单） | PUT | /api/redeem/orders/{id}/cancel | [PUT /api/redeem/orders/{id}/cancel](API_CLIENT_ENDPOINTS.md#api-redeem-orders-cancel) |
-| √ | Points（小程序：积分） | GET | /api/points/balance | [GET /api/points/balance](API_CLIENT_ENDPOINTS.md#api-points-balance) |
-| √ | Points（小程序：积分） | GET | /api/points/ledgers | [GET /api/points/ledgers](API_CLIENT_ENDPOINTS.md#api-points-ledgers) |
-| √ | VIP（小程序：会员） | GET | /api/vip/status | [GET /api/vip/status](API_CLIENT_ENDPOINTS.md#api-vip-status) |
-| √ | Task（小程序：任务） | GET | /api/tasks | [GET /api/tasks](API_CLIENT_ENDPOINTS.md#api-tasks-list) |
-| × | Task（小程序：任务） | POST | /api/tasks/checkin | [POST /api/tasks/checkin](API_CLIENT_ENDPOINTS.md#api-tasks-checkin) |
-| × | Task（小程序：任务） | POST | /api/tasks/{taskCode}/claim | [POST /api/tasks/{taskCode}/claim](API_CLIENT_ENDPOINTS.md#api-tasks-claim) |
-| × | Admin（管理员） | POST | /admin/auth/login | [POST /admin/auth/login](API_ADMIN_ENDPOINTS.md#api-admin-auth-login) |
-| × | Admin（管理员） | GET | /admin/auth/me | [GET /admin/auth/me](API_ADMIN_ENDPOINTS.md#api-admin-auth-me) |
-| × | Admin（管理员） | POST | /admin/auth/logout | [POST /admin/auth/logout](API_ADMIN_ENDPOINTS.md#api-admin-auth-logout) |
-| √ | Admin（管理员） | GET | /admin/audit/logs | [GET /admin/audit/logs](API_ADMIN_ENDPOINTS.md#api-admin-audit-logs) |
-| × | Admin（管理员） | POST | /admin/points/adjust | [POST /admin/points/adjust](API_ADMIN_ENDPOINTS.md#api-admin-points-adjust) |
-| × | Admin（管理员） | PUT | /admin/users/{id}/drinks/use | [PUT /admin/users/{id}/drinks/use](API_ADMIN_ENDPOINTS.md#api-admin-users-drinks-use) |
-| × | Admin（管理员） | POST | /admin/tournaments/{id}/results/publish | [POST /admin/tournaments/{id}/results/publish](API_ADMIN_ENDPOINTS.md#api-admin-tournament-results-publish) |
-| × | Admin（管理员） | POST | /admin/tournaments/{id}/awards/grant | [POST /admin/tournaments/{id}/awards/grant](API_ADMIN_ENDPOINTS.md#api-admin-tournament-awards-grant) |
-| × | Media（管理员） | POST | /admin/media/upload | [POST /admin/media/upload](API_ADMIN_ENDPOINTS.md#api-admin-media-upload) |
-
-## 详细说明
-
-本文件只保留接口目录与“已注册路由清单”。详细的请求/响应/设计思路已拆分到：
-
-- 后台管理端接口：[API_ADMIN_ENDPOINTS.md](API_ADMIN_ENDPOINTS.md)
-- 客户端接口：[API_CLIENT_ENDPOINTS.md](API_CLIENT_ENDPOINTS.md)
-*** End of File
+## 0. 通用约定
 
 ### 0.1 Base URL
 
@@ -152,8 +124,8 @@ GET /health √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L129-L133)
-- Handler：[health.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/health.go#L1-L21)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L129-L133)
+- Handler：[health.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/health.go#L1-L21)
 
 实现逻辑：
 
@@ -196,98 +168,6 @@ curl -X GET "http://localhost:8080/health"
 
 ---
 
-## module-auth
-Auth 模块（小程序登录） √
-
-### api-auth-wechat-login
-POST /api/auth/wechat/login √
-
-用途：小程序登录（临时方案：直接用 openid 登录并签发 token）。
-
-实现位置：
-
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L129-L142)
-- Handler：[wechat.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/wechat.go#L1-L57)
-- Middleware：解析 `Authorization: Bearer <token>` 写入 `X-User-Id`（[middleware.go](file:///e:/VUE3/新建文件夹/GameSocial/api/middleware/middleware.go#L52-L83)）
-- Service：`auth.Service.OpenIDLogin`（[service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/auth/service.go)）
-
-实现逻辑：
-
-1. 校验 HTTP 方法必须为 `POST`，并校验 `svc` 已注入。
-2. 解析 JSON body，读取 `openId/openid`（兼容字段）。
-3. 调用 `svc.OpenIDLogin(ctx, openID)`：按 openid 获取/创建用户并签发 token。
-4. 成功使用 `SendJSuccess` 返回；失败使用 `SendJBizFail/SendJError` 返回。
-
-请求：
-
-- Method：`POST`
-- Path：`/api/auth/wechat/login`
-- Body：JSON
-
-请求体字段：
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|---:|---|
-| openId | string | 是 | 小程序 openid |
-| openid | string | 否 | 兼容字段（同 openId） |
-
-请求示例：
-
-```bash
-curl -X POST "http://localhost:8080/api/auth/wechat/login" \
-  -H "Content-Type: application/json" \
-  -d "{\"openId\":\"o_xxxxxxx\"}"
-```
-
-成功响应 `data` 字段：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| token | string | 访问 token（后续请求放到 `Authorization: Bearer <token>`） |
-| user | object | 用户信息 |
-
-`user` 字段：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| id | number | 用户 ID |
-| openId | string | 小程序 openid |
-| unionId | string | 可选 unionid |
-| nickname | string | 昵称（当前创建时为空字符串） |
-| avatarUrl | string | 头像 URL（当前创建时为空字符串） |
-| status | number | 1=正常，0=封禁 |
-
-成功响应示例：
-
-```json
-{
-  "code": 200,
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": 1001,
-      "openId": "o_xxxxxxx",
-      "unionId": "",
-      "nickname": "",
-      "avatarUrl": "",
-      "status": 1
-    }
-  },
-  "message": "ok"
-}
-```
-
-失败场景示例（openId 为空）：
-
-```json
-{
-  "code": 201,
-  "message": "openId 不能为空"
-}
-```
-
----
-
 ## module-item
 Item 模块（管理员：积分商品管理） √
 
@@ -298,9 +178,9 @@ POST /admin/goods √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
 
 实现逻辑：
 
@@ -370,9 +250,9 @@ GET /admin/goods √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
 
 实现逻辑：
 
@@ -434,9 +314,9 @@ GET /admin/goods/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
 
 实现逻辑：
 
@@ -485,9 +365,9 @@ PUT /admin/goods/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
 
 实现逻辑：
 
@@ -547,9 +427,9 @@ DELETE /admin/goods/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
 
 实现逻辑：
 
@@ -593,9 +473,9 @@ POST /admin/tournaments √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go#L1-L44)
-- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L1-L131)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go#L1-L44)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go#L1-L131)
 
 实现逻辑：
 
@@ -669,9 +549,9 @@ GET /admin/tournaments √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go)
-- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
 
 实现逻辑：
 
@@ -736,9 +616,9 @@ GET /admin/tournaments/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go)
-- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
 
 实现逻辑：
 
@@ -783,9 +663,9 @@ PUT /admin/tournaments/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go)
-- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
 
 实现逻辑：
 
@@ -843,9 +723,9 @@ DELETE /admin/tournaments/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go)
-- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
 
 实现逻辑：
 
@@ -886,9 +766,9 @@ POST /admin/task-defs √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
 
 实现逻辑：
 
@@ -960,9 +840,9 @@ GET /admin/task-defs √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
 
 实现逻辑：
 
@@ -1025,9 +905,9 @@ GET /admin/task-defs/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
 
 实现逻辑：
 
@@ -1071,9 +951,9 @@ PUT /admin/task-defs/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
 
 实现逻辑：
 
@@ -1130,9 +1010,9 @@ DELETE /admin/task-defs/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
 
 实现逻辑：
 
@@ -1173,9 +1053,9 @@ GET /admin/users √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L175-L178)
-- Handler：[admin_users.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_users.go)
-- Service：[user/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[admin_users.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_users.go)
+- Service：[user/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/user/service.go)
 
 实现逻辑：
 
@@ -1249,9 +1129,9 @@ GET /admin/users/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L175-L178)
-- Handler：[admin_users.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_users.go#L1-L118)
-- Service：[user/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[admin_users.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_users.go#L1-L118)
+- Service：[user/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/user/service.go)
 
 实现逻辑：
 
@@ -1294,9 +1174,9 @@ PUT /admin/users/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L175-L178)
-- Handler：[admin_users.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_users.go#L1-L118)
-- Service：[user/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[admin_users.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_users.go#L1-L118)
+- Service：[user/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/user/service.go)
 
 实现逻辑：
 
@@ -1358,9 +1238,9 @@ POST /admin/redeem/orders √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go)
-- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go)
 
 实现逻辑：
 
@@ -1451,9 +1331,9 @@ GET /admin/redeem/orders √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go)
-- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go)
 
 实现逻辑：
 
@@ -1526,9 +1406,9 @@ GET /admin/redeem/orders/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go)
-- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go)
 
 实现逻辑：
 
@@ -1578,9 +1458,9 @@ PUT /admin/redeem/orders/{id}/use √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go#L118-L160)
-- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L270-L323)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go#L118-L160)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go#L270-L323)
 
 实现逻辑：
 
@@ -1647,9 +1527,9 @@ PUT /admin/redeem/orders/{id}/cancel √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go#L162-L193)
-- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L299-L323)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go#L162-L193)
+- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go#L299-L323)
 
 实现逻辑：
 
@@ -1694,278 +1574,6 @@ curl -X PUT "http://localhost:8080/admin/redeem/orders/10/cancel"
 
 ---
 
-## module-user-app
-User 模块（小程序：个人资料） √
-
-### api-users-me-get
-GET /api/users/me √
-
-用途：获取当前登录用户的个人资料（昵称、头像等）。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
-### api-users-me-update
-PUT /api/users/me √
-
-用途：更新当前登录用户的个人资料（昵称、头像等）。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
----
-
-## module-points
-Points 模块（小程序：积分账户与流水） √
-
-### api-points-balance
-GET /api/points/balance √
-
-用途：获取当前登录用户的积分余额。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
-### api-points-ledgers
-GET /api/points/ledgers √
-
-用途：获取当前登录用户的积分流水列表。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
----
-
-## module-vip
-VIP 模块（小程序：会员订阅） √
-
-### api-vip-status
-GET /api/vip/status √
-
-用途：获取当前登录用户的会员状态（是否会员、到期时间等）。
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
----
-
-## module-tournament-app
-Tournament 模块（小程序：赛事） √
-
-请求头（报名/取消报名必需；查询排名可选）：
-
-- `Authorization: Bearer <token>`
-
-### api-tournaments-list
-GET /api/tournaments √
-
-用途：赛事列表。
-
-### api-tournaments-get
-GET /api/tournaments/{id} √
-
-用途：赛事详情。
-
-### api-tournaments-join
-POST /api/tournaments/{id}/join √
-
-用途：当前登录用户报名参加指定赛事。
-
-请求：
-
-- Method：`POST`
-- Path：`/api/tournaments/{id}/join`
-- Path 参数：
-  - `id`：赛事 ID
-
-成功响应：`data.joined=true`
-
-请求示例：
-
-```bash
-curl -X POST "http://localhost:8080/api/tournaments/4001/join" \
-  -H "Authorization: Bearer <token>"
-```
-
-成功响应示例：
-
-```json
-{
-  "code": 200,
-  "data": {
-    "joined": true
-  },
-  "message": "ok"
-}
-```
-
-### api-tournaments-cancel
-PUT /api/tournaments/{id}/cancel √
-
-用途：当前登录用户取消指定赛事的报名（幂等；重复取消仍返回成功）。
-
-请求：
-
-- Method：`PUT`
-- Path：`/api/tournaments/{id}/cancel`
-- Path 参数：
-  - `id`：赛事 ID
-
-成功响应：`data.canceled=true`
-
-请求示例：
-
-```bash
-curl -X PUT "http://localhost:8080/api/tournaments/4001/cancel" \
-  -H "Authorization: Bearer <token>"
-```
-
-成功响应示例：
-
-```json
-{
-  "code": 200,
-  "data": {
-    "canceled": true
-  },
-  "message": "ok"
-}
-```
-
-### api-tournaments-results
-GET /api/tournaments/{id}/results √
-
-用途：查看赛事排名/成绩列表；如携带登录态会额外返回当前用户名次。
-
-请求：
-
-- Method：`GET`
-- Path：`/api/tournaments/{id}/results`
-- Path 参数：
-  - `id`：赛事 ID
-- Query：
-  - `offset`：默认 0
-  - `limit`：默认 50，最大 200
-
-响应 `data`：
-
-- `items`：排名列表（按 rankNo 升序）
-- `my`：当前用户名次（可选；仅在携带登录态且有成绩时返回）
-
-`items/my` 字段：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| userId | number | 用户 ID |
-| rankNo | number | 名次 |
-| score | number | 分数（无则为 0） |
-| nickname | string | 昵称 |
-| avatarUrl | string | 头像 URL |
-
-请求示例：
-
-```bash
-curl -X GET "http://localhost:8080/api/tournaments/4001/results?offset=0&limit=50"
-```
-
-成功响应示例：
-
-```json
-{
-  "code": 200,
-  "data": {
-    "items": [
-      {
-        "userId": 1003,
-        "rankNo": 1,
-        "score": 10,
-        "nickname": "小王",
-        "avatarUrl": ""
-      }
-    ],
-    "my": {
-      "userId": 1003,
-      "rankNo": 1,
-      "score": 10,
-      "nickname": "小王",
-      "avatarUrl": ""
-    }
-  },
-  "message": "ok"
-}
-```
-
----
-
-## module-task-app
-Task 模块（小程序：任务与打卡） ×
-
-### api-tasks-list
-GET /api/tasks √
-
-用途：查询任务列表（含当前周期进度与领奖状态）。
-
-### api-tasks-checkin
-POST /api/tasks/checkin ×
-
-用途：到店打卡（写入 checkin_log 并推动任务进度）。
-
-### api-tasks-claim
-POST /api/tasks/{taskCode}/claim ×
-
-用途：领取任务奖励（需幂等，避免重复发奖）。
-
----
-
-## module-item-app
-Item 模块（小程序：积分商品） √
-
-### api-goods-list
-GET /api/goods √
-
-用途：商品列表（用户侧展示）。
-
-### api-goods-get
-GET /api/goods/{id} √
-
-用途：商品详情（用户侧展示）。
-
----
-
-## module-redeem-app
-Redeem 模块（小程序：兑换订单） √
-
-请求头（以下接口通用）：
-
-- `Authorization: Bearer <token>`
-
-### api-redeem-orders-create
-POST /api/redeem/orders √
-
-用途：创建兑换订单（userId 从 token 获取；扣减积分并生成订单号）。
-
-### api-redeem-orders-list
-GET /api/redeem/orders √
-
-用途：查询我的兑换订单列表。
-
-### api-redeem-orders-get
-GET /api/redeem/orders/{id} √
-
-用途：查询我的兑换订单详情（含 items）。
-
-### api-redeem-orders-cancel
-PUT /api/redeem/orders/{id}/cancel √
-
-用途：取消我的兑换订单（仅允许 CREATED -> CANCELED）。
-
----
-
 ## module-admin
 Admin 模块（管理员：登录/审计/关键操作） ×
 
@@ -1976,8 +1584,8 @@ POST /admin/auth/login ×
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L682-L694)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L682-L694)
 
 实现逻辑：
 
@@ -1991,8 +1599,8 @@ GET /admin/auth/me ×
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L696-L709)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L696-L709)
 
 实现逻辑：
 
@@ -2006,8 +1614,8 @@ POST /admin/auth/logout ×
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L711-L721)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L711-L721)
 
 实现逻辑：
 
@@ -2021,8 +1629,8 @@ GET /admin/audit/logs √
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L723-L792)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L723-L792)
 
 实现逻辑：
 
@@ -2039,8 +1647,8 @@ POST /admin/points/adjust ×
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L794-L804)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L794-L804)
 
 实现逻辑：
 
@@ -2054,8 +1662,8 @@ PUT /admin/users/{id}/drinks/use ×
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L806-L817)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L806-L817)
 
 实现逻辑：
 
@@ -2070,8 +1678,8 @@ POST /admin/tournaments/{id}/results/publish ×
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L819-L830)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L819-L830)
 
 实现逻辑：
 
@@ -2086,8 +1694,8 @@ POST /admin/tournaments/{id}/awards/grant ×
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L832-L843)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L832-L843)
 
 实现逻辑：
 
@@ -2107,18 +1715,10 @@ POST /admin/media/upload ×
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L845-L858)
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L845-L858)
 
 实现逻辑：
 
 1. 校验方法为 `POST`。
 2. 当前为占位实现：直接返回空 `url` 与 `createdAt`（RFC3339）。
-
----
-
-## module-unimplemented
-小程序侧接口汇总（部分未完成） ×
-
-本段用于保留一个“规划接口”总入口；具体接口已拆分到上面的模块段落（User/Points/VIP/Tournament/Task/Item/Redeem/Admin/Media）。
-
