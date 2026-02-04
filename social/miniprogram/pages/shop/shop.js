@@ -1,4 +1,5 @@
 const { request } = require('../../utils/request')
+const { getUserCache } = require('../../utils/storage')
 
 Page({
   data: {
@@ -31,6 +32,12 @@ Page({
   redeemGoods(e) {
     const goodsId = Number(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id)
     if (!goodsId) return
+    const user = getUserCache && getUserCache()
+    const userId = user && typeof user.id === 'number' ? user.id : Number(user && user.id)
+    if (!userId) {
+      wx.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
     const goods = (this.data.goods || []).find(g => Number(g && g.id) === goodsId)
     const pointsPrice = goods && typeof goods.pointsPrice === 'number' ? goods.pointsPrice : NaN
     if (!Number.isFinite(pointsPrice)) {
@@ -38,7 +45,7 @@ Page({
       return
     }
     const item = { goodsId: goodsId, quantity: 1, pointsPrice }
-    request('/api/redeem/orders', { method: 'POST', data: { items: [item] } })
+    request('/api/redeem/orders', { method: 'POST', data: { userId, items: [item] } })
       .then(order => {
         wx.showModal({
           title: '下单成功',

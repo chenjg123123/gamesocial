@@ -30,11 +30,11 @@ func userIDFromRequest(r *http.Request) uint64 {
 	if r == nil {
 		return 0
 	}
-	q := r.URL.Query()
-	if id := parseUint64(q.Get("userId")); id != 0 {
+	if id := parseUint64(r.Header.Get("X-User-Id")); id != 0 {
 		return id
 	}
-	if id := parseUint64(r.Header.Get("X-User-Id")); id != 0 {
+	q := r.URL.Query()
+	if id := parseUint64(q.Get("userId")); id != 0 {
 		return id
 	}
 	return 0
@@ -77,7 +77,7 @@ func AppUserMeGet(svc user.Service) http.HandlerFunc {
 
 		uid := userIDFromRequest(r)
 		if uid == 0 {
-			SendJBizFail(w, "userId 不能为空")
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
 			return
 		}
 		out, err := svc.Get(r.Context(), uid)
@@ -104,7 +104,7 @@ func AppUserMeUpdate(svc user.Service) http.HandlerFunc {
 
 		uid := userIDFromRequest(r)
 		if uid == 0 {
-			SendJBizFail(w, "userId 不能为空")
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
 			return
 		}
 
@@ -139,7 +139,7 @@ func AppPointsBalance(db *sql.DB) http.HandlerFunc {
 
 		uid := userIDFromRequest(r)
 		if uid == 0 {
-			SendJBizFail(w, "userId 不能为空")
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
 			return
 		}
 
@@ -177,7 +177,7 @@ func AppPointsLedgers(db *sql.DB) http.HandlerFunc {
 
 		uid := userIDFromRequest(r)
 		if uid == 0 {
-			SendJBizFail(w, "userId 不能为空")
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
 			return
 		}
 
@@ -241,7 +241,7 @@ func AppVipStatus(db *sql.DB) http.HandlerFunc {
 
 		uid := userIDFromRequest(r)
 		if uid == 0 {
-			SendJBizFail(w, "userId 不能为空")
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
 			return
 		}
 
@@ -332,40 +332,100 @@ func AppTournamentsGet(svc tournament.Service) http.HandlerFunc {
 
 // AppTournamentsJoin 赛事报名占位接口。
 // POST /api/tournaments/{id}/join
-func AppTournamentsJoin() http.HandlerFunc {
+func AppTournamentsJoin(svc tournament.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			SendJError(w, http.StatusMethodNotAllowed, CodeBizNotDone, "method not allowed")
 			return
 		}
-		_ = parseUint64(r.PathValue("id"))
+		if svc == nil {
+			SendJError(w, http.StatusInternalServerError, CodeInternal, "")
+			return
+		}
+
+		uid := userIDFromRequest(r)
+		if uid == 0 {
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
+			return
+		}
+
+		id := parseUint64(r.PathValue("id"))
+		if id == 0 {
+			SendJBizFail(w, "id 不合法")
+			return
+		}
+
+		if err := svc.Join(r.Context(), id, uid); err != nil {
+			SendJBizFail(w, err.Error())
+			return
+		}
 		SendJSuccess(w, map[string]any{"joined": true})
 	}
 }
 
 // AppTournamentsCancel 赛事取消报名占位接口。
 // PUT /api/tournaments/{id}/cancel
-func AppTournamentsCancel() http.HandlerFunc {
+func AppTournamentsCancel(svc tournament.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
 			SendJError(w, http.StatusMethodNotAllowed, CodeBizNotDone, "method not allowed")
 			return
 		}
-		_ = parseUint64(r.PathValue("id"))
+		if svc == nil {
+			SendJError(w, http.StatusInternalServerError, CodeInternal, "")
+			return
+		}
+
+		uid := userIDFromRequest(r)
+		if uid == 0 {
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
+			return
+		}
+
+		id := parseUint64(r.PathValue("id"))
+		if id == 0 {
+			SendJBizFail(w, "id 不合法")
+			return
+		}
+
+		if err := svc.Cancel(r.Context(), id, uid); err != nil {
+			SendJBizFail(w, err.Error())
+			return
+		}
 		SendJSuccess(w, map[string]any{"canceled": true})
 	}
 }
 
 // AppTournamentsResults 赛事成绩占位接口。
 // GET /api/tournaments/{id}/results
-func AppTournamentsResults() http.HandlerFunc {
+func AppTournamentsResults(svc tournament.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			SendJError(w, http.StatusMethodNotAllowed, CodeBizNotDone, "method not allowed")
 			return
 		}
-		_ = parseUint64(r.PathValue("id"))
-		SendJSuccess(w, []any{})
+		if svc == nil {
+			SendJError(w, http.StatusInternalServerError, CodeInternal, "")
+			return
+		}
+
+		id := parseUint64(r.PathValue("id"))
+		if id == 0 {
+			SendJBizFail(w, "id 不合法")
+			return
+		}
+
+		q := r.URL.Query()
+		offset, _ := strconv.Atoi(q.Get("offset"))
+		limit, _ := strconv.Atoi(q.Get("limit"))
+
+		uid := userIDFromRequest(r)
+		out, err := svc.GetResults(r.Context(), id, uid, offset, limit)
+		if err != nil {
+			SendJBizFail(w, err.Error())
+			return
+		}
+		SendJSuccess(w, out)
 	}
 }
 
@@ -495,11 +555,18 @@ func AppRedeemOrderCreate(svc redeem.Service) http.HandlerFunc {
 			return
 		}
 
+		uid := userIDFromRequest(r)
+		if uid == 0 {
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
+			return
+		}
+
 		var req redeem.CreateOrderRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			SendJBizFail(w, "参数格式错误")
 			return
 		}
+		req.UserID = uid
 
 		out, err := svc.CreateOrder(r.Context(), req)
 		if err != nil {
@@ -523,17 +590,22 @@ func AppRedeemOrderList(svc redeem.Service) http.HandlerFunc {
 			return
 		}
 
+		uid := userIDFromRequest(r)
+		if uid == 0 {
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
+			return
+		}
+
 		q := r.URL.Query()
 		offset, _ := strconv.Atoi(q.Get("offset"))
 		limit, _ := strconv.Atoi(q.Get("limit"))
 		status := q.Get("status")
-		userID := parseUint64(q.Get("userId"))
 
 		out, err := svc.ListOrders(r.Context(), redeem.ListOrderRequest{
 			Offset: offset,
 			Limit:  limit,
 			Status: status,
-			UserID: userID,
+			UserID: uid,
 		})
 		if err != nil {
 			SendJBizFail(w, err.Error())
@@ -553,6 +625,11 @@ func AppRedeemOrderGet(svc redeem.Service) http.HandlerFunc {
 		}
 		if svc == nil {
 			SendJError(w, http.StatusInternalServerError, CodeInternal, "")
+			return
+		}
+
+		if userIDFromRequest(r) == 0 {
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
 			return
 		}
 
@@ -580,6 +657,11 @@ func AppRedeemOrderCancel(svc redeem.Service) http.HandlerFunc {
 		}
 		if svc == nil {
 			SendJError(w, http.StatusInternalServerError, CodeInternal, "")
+			return
+		}
+
+		if userIDFromRequest(r) == 0 {
+			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
 			return
 		}
 

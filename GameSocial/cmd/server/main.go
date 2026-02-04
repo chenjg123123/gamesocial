@@ -93,6 +93,7 @@ func main() {
 	handler := middleware.Chain(
 		mux,
 		middleware.Recover(),
+		middleware.InjectUserIDFromToken(cfg.AuthTokenSecret),
 		middleware.CORS("*"),
 		middleware.Logging(),
 	)
@@ -136,9 +137,9 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("GET /api/goods/{id}", handlers.AppGoodsGet(app.ItemSvc))
 	mux.HandleFunc("GET /api/tournaments", handlers.AppTournamentsList(app.TournamentSvc))
 	mux.HandleFunc("GET /api/tournaments/{id}", handlers.AppTournamentsGet(app.TournamentSvc))
-	mux.HandleFunc("POST /api/tournaments/{id}/join", handlers.AppTournamentsJoin())
-	mux.HandleFunc("PUT /api/tournaments/{id}/cancel", handlers.AppTournamentsCancel())
-	mux.HandleFunc("GET /api/tournaments/{id}/results", handlers.AppTournamentsResults())
+	mux.HandleFunc("POST /api/tournaments/{id}/join", handlers.AppTournamentsJoin(app.TournamentSvc))
+	mux.HandleFunc("PUT /api/tournaments/{id}/cancel", handlers.AppTournamentsCancel(app.TournamentSvc))
+	mux.HandleFunc("GET /api/tournaments/{id}/results", handlers.AppTournamentsResults(app.TournamentSvc))
 	mux.HandleFunc("GET /api/redeem/orders", handlers.AppRedeemOrderList(app.RedeemSvc))
 	mux.HandleFunc("POST /api/redeem/orders", handlers.AppRedeemOrderCreate(app.RedeemSvc))
 	mux.HandleFunc("GET /api/redeem/orders/{id}", handlers.AppRedeemOrderGet(app.RedeemSvc))

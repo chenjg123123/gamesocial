@@ -51,6 +51,27 @@ type ListTournamentRequest struct {
 	Status string `json:"status"`
 }
 
+type TournamentParticipant struct {
+	ID           uint64    `json:"id"`
+	TournamentID uint64    `json:"tournamentId"`
+	UserID       uint64    `json:"userId"`
+	JoinStatus   string    `json:"joinStatus"`
+	JoinedAt     time.Time `json:"joinedAt"`
+}
+
+type TournamentResultItem struct {
+	UserID    uint64 `json:"userId"`
+	RankNo    int    `json:"rankNo"`
+	Score     int    `json:"score"`
+	Nickname  string `json:"nickname"`
+	AvatarURL string `json:"avatarUrl"`
+}
+
+type TournamentResults struct {
+	Items []TournamentResultItem `json:"items"`
+	My    *TournamentResultItem  `json:"my,omitempty"`
+}
+
 // Service 定义 tournament 模块对外提供的业务接口（赛事 CRUD）。
 type Service interface {
 	Create(ctx context.Context, req CreateTournamentRequest) (Tournament, error)
@@ -58,6 +79,9 @@ type Service interface {
 	Delete(ctx context.Context, id uint64) error
 	Get(ctx context.Context, id uint64) (Tournament, error)
 	List(ctx context.Context, req ListTournamentRequest) ([]Tournament, error)
+	Join(ctx context.Context, tournamentID, userID uint64) error
+	Cancel(ctx context.Context, tournamentID, userID uint64) error
+	GetResults(ctx context.Context, tournamentID, userID uint64, offset, limit int) (TournamentResults, error)
 }
 
 type service struct {
@@ -252,4 +276,140 @@ func (s *service) List(ctx context.Context, req ListTournamentRequest) ([]Tourna
 		return nil, err
 	}
 	return out, nil
+}
+
+func (s *service) Join(ctx context.Context, tournamentID, userID uint64) error {
+	if s.db == nil {
+		return errors.New("database disabled")
+	}
+	if tournamentID == 0 {
+		return errors.New("invalid tournament id")
+	}
+	if userID == 0 {
+		return errors.New("invalid user id")
+	}
+
+	t, err := s.Get(ctx, tournamentID)
+	if err != nil {
+		return err
+	}
+	if t.Status != "PUBLISHED" {
+		return fmt.Errorf("tournament not published")
+	}
+	if !t.EndAt.IsZero() && time.Now().After(t.EndAt) {
+		return fmt.Errorf("tournament ended")
+	}
+
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO tournament_participant (tournament_id, user_id, join_status, joined_at)
+		VALUES (?, ?, 'JOINED', NOW())
+		ON DUPLICATE KEY UPDATE join_status = 'JOINED', joined_at = NOW()
+	`, tournamentID, userID)
+	return err
+}
+
+func (s *service) Cancel(ctx context.Context, tournamentID, userID uint64) error {
+	if s.db == nil {
+		return errors.New("database disabled")
+	}
+	if tournamentID == 0 {
+		return errors.New("invalid tournament id")
+	}
+	if userID == 0 {
+		return errors.New("invalid user id")
+	}
+
+	_, err := s.Get(ctx, tournamentID)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.db.ExecContext(ctx, `
+		UPDATE tournament_participant
+		SET join_status = 'CANCELED'
+		WHERE tournament_id = ? AND user_id = ? AND join_status <> 'CANCELED'
+	`, tournamentID, userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *service) GetResults(ctx context.Context, tournamentID, userID uint64, offset, limit int) (TournamentResults, error) {
+	if s.db == nil {
+		return TournamentResults{}, errors.New("database disabled")
+	}
+	if tournamentID == 0 {
+		return TournamentResults{}, errors.New("invalid tournament id")
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	_, err := s.Get(ctx, tournamentID)
+	if err != nil {
+		return TournamentResults{}, err
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT r.user_id, r.rank_no, r.score, IFNULL(u.nickname, ''), IFNULL(u.avatar_url, '')
+		FROM tournament_result r
+		LEFT JOIN user u ON u.id = r.user_id
+		WHERE r.tournament_id = ?
+		ORDER BY r.rank_no ASC, r.id ASC
+		LIMIT ? OFFSET ?
+	`, tournamentID, limit, offset)
+	if err != nil {
+		return TournamentResults{}, err
+	}
+	defer rows.Close()
+
+	items := make([]TournamentResultItem, 0, limit)
+	for rows.Next() {
+		var it TournamentResultItem
+		var score sql.NullInt64
+		if err := rows.Scan(&it.UserID, &it.RankNo, &score, &it.Nickname, &it.AvatarURL); err != nil {
+			return TournamentResults{}, err
+		}
+		if score.Valid {
+			it.Score = int(score.Int64)
+		}
+		items = append(items, it)
+	}
+	if err := rows.Err(); err != nil {
+		return TournamentResults{}, err
+	}
+
+	var my *TournamentResultItem
+	if userID != 0 {
+		var it TournamentResultItem
+		var score sql.NullInt64
+		err := s.db.QueryRowContext(ctx, `
+			SELECT r.user_id, r.rank_no, r.score, IFNULL(u.nickname, ''), IFNULL(u.avatar_url, '')
+			FROM tournament_result r
+			LEFT JOIN user u ON u.id = r.user_id
+			WHERE r.tournament_id = ? AND r.user_id = ?
+			LIMIT 1
+		`, tournamentID, userID).Scan(&it.UserID, &it.RankNo, &score, &it.Nickname, &it.AvatarURL)
+		if err != nil && err != sql.ErrNoRows {
+			return TournamentResults{}, err
+		}
+		if err == nil {
+			if score.Valid {
+				it.Score = int(score.Int64)
+			}
+			my = &it
+		}
+	}
+
+	return TournamentResults{
+		Items: items,
+		My:    my,
+	}, nil
 }

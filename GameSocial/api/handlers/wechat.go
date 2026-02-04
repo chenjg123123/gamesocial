@@ -9,10 +9,13 @@ import (
 )
 
 type wechatLoginRequest struct {
-	Code string `json:"code"`
+	Code         string `json:"code"`
+	OpenID       string `json:"openId"`
+	OpenIDLegacy string `json:"openid"`
 }
 
-// WechatLogin 处理小程序登录请求：前端传 code，后端通过 code2session 换 openid，创建/更新用户并签发 token。
+// WechatLogin 处理小程序登录请求：
+// - 临时：仅支持直接传 openId/openid 返回用户数据（可选签发 token）
 func WechatLogin(svc auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1) 方法校验：小程序登录预期是 POST。
@@ -33,13 +36,16 @@ func WechatLogin(svc auth.Service) http.HandlerFunc {
 			SendJBizFail(w, "参数格式错误")
 			return
 		}
-		if req.Code == "" {
-			SendJBizFail(w, "code 不能为空")
+		openID := req.OpenID
+		if openID == "" {
+			openID = req.OpenIDLegacy
+		}
+		if openID == "" {
+			SendJBizFail(w, "openId 不能为空")
 			return
 		}
 
-		// 4) 调用业务层：code2session -> 创建/更新 user -> 签发 token。
-		result, err := svc.WechatLogin(r.Context(), req.Code)
+		result, err := svc.OpenIDLogin(r.Context(), openID)
 		if err != nil {
 			SendJBizFail(w, err.Error())
 			return

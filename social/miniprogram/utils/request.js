@@ -1,6 +1,6 @@
 const { clearToken, getToken } = require('./storage')
 
-const BASE_URL = 'https://gamesocial2-223439-8-1362326232.sh.run.tcloudbase.com'
+const BASE_URL = 'https://www.u835587.nyat.app:26462'
 
 const normalizeErrorMessage = data => {
   if (!data || typeof data !== 'object') return '请求失败'

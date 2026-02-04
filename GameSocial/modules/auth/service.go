@@ -31,6 +31,7 @@ type LoginResult struct {
 // Service 定义 auth 模块对外提供的业务接口。
 type Service interface {
 	WechatLogin(ctx context.Context, code string) (LoginResult, error)
+	OpenIDLogin(ctx context.Context, openID string) (LoginResult, error)
 }
 
 type service struct {
@@ -82,6 +83,38 @@ func (s *service) WechatLogin(ctx context.Context, code string) (LoginResult, er
 	token, err := MakeTokenV1(u.ID, time.Now().Add(s.tokenTTL), s.tokenSecret)
 	if err != nil {
 		return LoginResult{}, err
+	}
+
+	return LoginResult{
+		Token: token,
+		User:  u,
+	}, nil
+}
+
+// OpenIDLogin 使用 openid 直接完成登录（临时方案：跳过 code2session）。
+func (s *service) OpenIDLogin(ctx context.Context, openID string) (LoginResult, error) {
+	if s.db == nil {
+		return LoginResult{}, errors.New("database disabled")
+	}
+	if openID == "" {
+		return LoginResult{}, errors.New("openId is empty")
+	}
+
+	u, err := s.ensureUser(ctx, openID, "")
+	if err != nil {
+		return LoginResult{}, err
+	}
+	if u.Status == 0 {
+		return LoginResult{}, fmt.Errorf("user is banned")
+	}
+
+	token := ""
+	if len(s.tokenSecret) != 0 && s.tokenTTL > 0 {
+		t, err := MakeTokenV1(u.ID, time.Now().Add(s.tokenTTL), s.tokenSecret)
+		if err != nil {
+			return LoginResult{}, err
+		}
+		token = t
 	}
 
 	return LoginResult{

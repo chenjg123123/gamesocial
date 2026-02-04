@@ -45,12 +45,12 @@
     - √ [GET /api/points/ledgers](#api-points-ledgers)
   - √ [VIP 模块（小程序：会员订阅）](#module-vip)
     - √ [GET /api/vip/status](#api-vip-status)
-  - × [Tournament 模块（小程序：赛事）](#module-tournament-app)
+- √ [Tournament 模块（小程序：赛事）](#module-tournament-app)
     - √ [GET /api/tournaments](#api-tournaments-list)
     - √ [GET /api/tournaments/{id}](#api-tournaments-get)
-    - × [POST /api/tournaments/{id}/join](#api-tournaments-join)
-    - × [PUT /api/tournaments/{id}/cancel](#api-tournaments-cancel)
-    - × [GET /api/tournaments/{id}/results](#api-tournaments-results)
+    - √ [POST /api/tournaments/{id}/join](#api-tournaments-join)
+    - √ [PUT /api/tournaments/{id}/cancel](#api-tournaments-cancel)
+    - √ [GET /api/tournaments/{id}/results](#api-tournaments-results)
   - × [Task 模块（小程序：任务与打卡）](#module-task-app)
     - √ [GET /api/tasks](#api-tasks-list)
     - × [POST /api/tasks/checkin](#api-tasks-checkin)
@@ -115,9 +115,9 @@
 | √ | Item（小程序：积分商品） | GET | /api/goods/{id} | [GET /api/goods/{id}](#api-goods-get) |
 | √ | Tournament（小程序：赛事） | GET | /api/tournaments | [GET /api/tournaments](#api-tournaments-list) |
 | √ | Tournament（小程序：赛事） | GET | /api/tournaments/{id} | [GET /api/tournaments/{id}](#api-tournaments-get) |
-| × | Tournament（小程序：赛事） | POST | /api/tournaments/{id}/join | [POST /api/tournaments/{id}/join](#api-tournaments-join) |
-| × | Tournament（小程序：赛事） | PUT | /api/tournaments/{id}/cancel | [PUT /api/tournaments/{id}/cancel](#api-tournaments-cancel) |
-| × | Tournament（小程序：赛事） | GET | /api/tournaments/{id}/results | [GET /api/tournaments/{id}/results](#api-tournaments-results) |
+| √ | Tournament（小程序：赛事） | POST | /api/tournaments/{id}/join | [POST /api/tournaments/{id}/join](#api-tournaments-join) |
+| √ | Tournament（小程序：赛事） | PUT | /api/tournaments/{id}/cancel | [PUT /api/tournaments/{id}/cancel](#api-tournaments-cancel) |
+| √ | Tournament（小程序：赛事） | GET | /api/tournaments/{id}/results | [GET /api/tournaments/{id}/results](#api-tournaments-results) |
 | √ | Redeem（小程序：兑换订单） | GET | /api/redeem/orders | [GET /api/redeem/orders](#api-redeem-orders-list) |
 | √ | Redeem（小程序：兑换订单） | POST | /api/redeem/orders | [POST /api/redeem/orders](#api-redeem-orders-create) |
 | √ | Redeem（小程序：兑换订单） | GET | /api/redeem/orders/{id} | [GET /api/redeem/orders/{id}](#api-redeem-orders-get) |
@@ -196,8 +196,8 @@ BizCode 枚举（当前实现）：
 
 ### 0.6 鉴权说明
 
-- 目前接口未接入统一的鉴权中间件；`/admin/*` 管理端接口也暂未做 token 校验。
-- 小程序登录接口会返回 `token`，用于后续接入鉴权时作为凭证。
+- 小程序端需要登录的接口会解析 `Authorization: Bearer <token>`，从 token 的 `sub` 字段得到 `userId`；不需要再额外传 `userId` 参数。
+- `/admin/*` 管理端接口仍暂未接入 token 校验。
 
 ---
 
@@ -208,6 +208,17 @@ BizCode 枚举（当前实现）：
 GET /health √
 
 用途：用于部署探活与检查服务是否存活。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L129-L133)
+- Handler：[health.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/health.go#L1-L21)
+
+实现逻辑：
+
+1. handler 初始化时生成 `startedAt`（闭包捕获）。
+2. 每次请求返回 `status/startedAt/now`。
+3. 使用统一响应 `SendJSuccess` 返回 `data`。
 
 请求：
 
@@ -250,7 +261,21 @@ Auth 模块（小程序登录） √
 ### api-auth-wechat-login
 POST /api/auth/wechat/login √
 
-用途：小程序登录。前端传 `wx.login()` 得到的 `code`，后端通过 code2session 换取 openid/unionid，并创建/更新用户后签发 token。
+用途：小程序登录（临时方案：直接用 openid 登录并签发 token）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L129-L142)
+- Handler：[wechat.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/wechat.go#L1-L57)
+- Middleware：解析 `Authorization: Bearer <token>` 写入 `X-User-Id`（[middleware.go](file:///e:/VUE3/新建文件夹/GameSocial/api/middleware/middleware.go#L52-L83)）
+- Service：`auth.Service.OpenIDLogin`（[service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/auth/service.go)）
+
+实现逻辑：
+
+1. 校验 HTTP 方法必须为 `POST`，并校验 `svc` 已注入。
+2. 解析 JSON body，读取 `openId/openid`（兼容字段）。
+3. 调用 `svc.OpenIDLogin(ctx, openID)`：按 openid 获取/创建用户并签发 token。
+4. 成功使用 `SendJSuccess` 返回；失败使用 `SendJBizFail/SendJError` 返回。
 
 请求：
 
@@ -262,21 +287,22 @@ POST /api/auth/wechat/login √
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
-| code | string | 是 | `wx.login()` 返回的临时登录凭证 |
+| openId | string | 是 | 小程序 openid |
+| openid | string | 否 | 兼容字段（同 openId） |
 
 请求示例：
 
 ```bash
 curl -X POST "http://localhost:8080/api/auth/wechat/login" \
   -H "Content-Type: application/json" \
-  -d "{\"code\":\"wx_login_code_here\"}"
+  -d "{\"openId\":\"o_xxxxxxx\"}"
 ```
 
 成功响应 `data` 字段：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| token | string | 访问 token（当前仅签发，未被路由鉴权使用） |
+| token | string | 访问 token（后续请求放到 `Authorization: Bearer <token>`） |
 | user | object | 用户信息 |
 
 `user` 字段：
@@ -310,12 +336,12 @@ curl -X POST "http://localhost:8080/api/auth/wechat/login" \
 }
 ```
 
-失败场景示例（code 为空）：
+失败场景示例（openId 为空）：
 
 ```json
 {
   "code": 201,
-  "message": "code 不能为空"
+  "message": "openId 不能为空"
 }
 ```
 
@@ -328,6 +354,19 @@ Item 模块（管理员：积分商品管理） √
 POST /admin/goods √
 
 用途：创建积分商品（goods）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `POST`，并校验 `svc` 已注入。
+2. 解析 JSON body 为创建请求对象，进行基础校验（必填字段、数值范围等）。
+3. 写入 `goods` 表并返回创建后的商品对象。
+4. 返回 `SendJSuccess`。
 
 请求：
 
@@ -388,6 +427,19 @@ GET /admin/goods √
 
 用途：商品列表（默认排除已软删除的商品）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 `offset/limit/status`（并做分页兜底）。
+3. 从 `goods` 表查询列表（默认排除软删除记录）。
+4. 返回 `SendJSuccess`。
+
 请求：
 
 - Method：`GET`
@@ -439,6 +491,19 @@ GET /admin/goods/{id} √
 
 用途：获取单个商品详情。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，非法直接返回业务失败。
+3. 从 `goods` 表读取单条记录并返回。
+4. 返回 `SendJSuccess`。
+
 请求：
 
 - Method：`GET`
@@ -476,6 +541,19 @@ curl -X GET "http://localhost:8080/admin/goods/1"
 PUT /admin/goods/{id} √
 
 用途：更新商品（全量更新可变字段）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 解析 path 参数 `id`，并解析 JSON body 为更新请求对象。
+3. 更新 `goods` 表的可变字段并返回更新后的商品对象。
+4. 返回 `SendJSuccess`。
 
 请求：
 
@@ -526,6 +604,19 @@ DELETE /admin/goods/{id} √
 
 用途：删除商品（软删除：`status=0`）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[admin_goods.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go)
+- Service：[item/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `DELETE`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，非法直接返回业务失败。
+3. 调用 `svc.DeleteGoods(ctx, id)`，把 `goods.status` 更新为 0（软删除）。
+4. 返回 `data.deleted=true`。
+
 请求：
 
 - Method：`DELETE`
@@ -558,6 +649,19 @@ Tournament 模块（管理员：赛事管理） √
 POST /admin/tournaments √
 
 用途：创建赛事（tournament）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go#L1-L44)
+- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L1-L131)
+
+实现逻辑：
+
+1. 校验方法为 `POST`，并校验 `svc` 已注入。
+2. 解析 JSON body 为 `CreateTournamentRequest`。
+3. 调用 `svc.Create(ctx, req)` 写入 `tournament` 表，并返回创建后的赛事详情。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -622,6 +726,19 @@ GET /admin/tournaments √
 
 用途：赛事列表。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 query：`offset/limit/status`（并做分页兜底）。
+3. 调用 `svc.List(ctx, req)` 查询 `tournament` 列表（未指定 status 时默认排除 `CANCELED`）。
+4. 返回 `SendJSuccess`。
+
 Query：
 
 - `offset`：默认 0
@@ -676,6 +793,19 @@ GET /admin/tournaments/{id} √
 
 用途：赛事详情。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，非法直接返回业务失败。
+3. 调用 `svc.Get(ctx, id)` 读取赛事详情。
+4. 返回 `SendJSuccess`。
+
 请求示例：
 
 ```bash
@@ -709,6 +839,19 @@ curl -X GET "http://localhost:8080/admin/tournaments/1"
 PUT /admin/tournaments/{id} √
 
 用途：更新赛事（全量更新可变字段）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，并解析 JSON body 为 `UpdateTournamentRequest`。
+3. 调用 `svc.Update(ctx, id, req)` 更新赛事并返回最新详情。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -757,6 +900,19 @@ DELETE /admin/tournaments/{id} √
 
 用途：删除赛事（软删除：将 `status` 置为 `CANCELED`）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[admin_tournaments.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go)
+- Service：[tournament/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `DELETE`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 调用 `svc.Delete(ctx, id)` 将赛事状态更新为 `CANCELED`（软删除）。
+4. 返回 `data.deleted=true`。
+
 请求示例：
 
 ```bash
@@ -786,6 +942,19 @@ Task 模块（管理员：任务定义管理） √
 POST /admin/task-defs √
 
 用途：创建任务定义（task_def）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `POST`，并校验 `svc` 已注入。
+2. 解析 JSON body 为 `CreateTaskDefRequest`。
+3. 写入 `task_def` 表并返回创建后的任务定义对象。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -848,6 +1017,19 @@ GET /admin/task-defs √
 
 用途：任务定义列表。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 query：`offset/limit/status`（并做分页兜底）。
+3. 查询 `task_def` 表返回列表（默认排除软删除/停用记录取决于传参）。
+4. 返回 `SendJSuccess`。
+
 Query：
 
 - `offset`：默认 0
@@ -900,6 +1082,19 @@ GET /admin/task-defs/{id} √
 
 用途：任务定义详情。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 查询 `task_def` 表返回单条任务定义对象（`rule_json` 扫描为 JSON）。
+4. 返回 `SendJSuccess`。
+
 请求示例：
 
 ```bash
@@ -932,6 +1127,19 @@ curl -X GET "http://localhost:8080/admin/task-defs/1"
 PUT /admin/task-defs/{id} √
 
 用途：更新任务定义（全量更新可变字段）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，并解析 JSON body 为 `UpdateTaskDefRequest`。
+3. 更新 `task_def` 表并返回更新后的任务定义对象。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -979,6 +1187,19 @@ DELETE /admin/task-defs/{id} √
 
 用途：删除任务定义（软删除：`status=0`）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[admin_task_defs.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go)
+- Service：[task/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `DELETE`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 更新 `task_def.status=0` 作为软删除。
+4. 返回 `data.deleted=true`。
+
 请求示例：
 
 ```bash
@@ -1008,6 +1229,19 @@ User 模块（管理员：用户管理） √
 GET /admin/users √
 
 用途：用户列表。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[admin_users.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_users.go)
+- Service：[user/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 query：`offset/limit/status`。
+3. 查询 `user` 表返回用户数组。
+4. 返回 `SendJSuccess`。
 
 Query：
 
@@ -1072,6 +1306,19 @@ GET /admin/users/{id} √
 
 用途：用户详情。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[admin_users.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_users.go#L1-L118)
+- Service：[user/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 调用 `svc.Get(ctx, id)` 查询用户并返回。
+4. 返回 `SendJSuccess`。
+
 请求示例：
 
 ```bash
@@ -1103,6 +1350,19 @@ curl -X GET "http://localhost:8080/admin/users/1001"
 PUT /admin/users/{id} √
 
 用途：更新用户资料/状态。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[admin_users.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_users.go#L1-L118)
+- Service：[user/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，并解析 JSON body 为 `UpdateUserRequest`。
+3. 调用 `svc.Update(ctx, id, req)` 更新用户可变字段并返回最新对象。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -1154,6 +1414,19 @@ Redeem 模块（管理员：兑换订单管理） √
 POST /admin/redeem/orders √
 
 用途：创建兑换订单（最小 CRUD：当前不接入积分扣减流水）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go)
+- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `POST`，并校验 `svc` 已注入。
+2. 解析 JSON body（`userId/items`），并做基础校验（items 至少 1 条、数量/积分非负等）。
+3. 调用 `svc.CreateOrder(ctx, req)`：写 `redeem_order` 与 `redeem_order_item`，生成 `orderNo`。
+4. 返回 `SendJSuccess`。
 
 请求体字段：
 
@@ -1235,6 +1508,19 @@ GET /admin/redeem/orders √
 
 用途：兑换订单列表（不包含 items，避免列表响应过重）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go)
+- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 解析 query：`offset/limit/status/userId`。
+3. 调用 `svc.ListOrders(ctx, req)` 查询 `redeem_order` 列表（不带 items）。
+4. 返回 `SendJSuccess`。
+
 Query：
 
 - `offset`：默认 0
@@ -1297,6 +1583,19 @@ GET /admin/redeem/orders/{id} √
 
 用途：兑换订单详情（包含 items）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go)
+- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`。
+3. 调用 `svc.GetOrder(ctx, id)`：读取订单主表 + 明细表并组装返回。
+4. 返回 `SendJSuccess`。
+
 请求示例：
 
 ```bash
@@ -1335,6 +1634,20 @@ curl -X GET "http://localhost:8080/admin/redeem/orders/10"
 PUT /admin/redeem/orders/{id}/use √
 
 用途：核销订单（仅允许 `CREATED -> USED`，避免重复核销）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go#L118-L160)
+- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L270-L323)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，校验为正整数。
+3. 解析可选 JSON body：`adminId/admin_id`；未提供则默认 `1`。
+4. 调用 `svc.UseOrder(ctx, id, adminId)`：仅允许 `CREATED -> USED`，更新 `used_by_admin_id/used_at`。
+5. 返回更新后的 `RedeemOrder`（包含 items）。
 
 请求：
 
@@ -1391,6 +1704,19 @@ PUT /admin/redeem/orders/{id}/cancel √
 
 用途：取消订单（仅允许 `CREATED -> CANCELED`）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[admin_redeem_orders.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go#L162-L193)
+- Service：[redeem/service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L299-L323)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`，并校验 `svc` 已注入。
+2. 从 path 解析 `id`，校验为正整数。
+3. 调用 `svc.CancelOrder(ctx, id)`：仅允许 `CREATED -> CANCELED`。
+4. 返回更新后的 `RedeemOrder`（包含 items）。
+
 请求示例：
 
 ```bash
@@ -1435,10 +1761,18 @@ GET /api/users/me √
 
 用途：获取当前登录用户的个人资料（昵称、头像等）。
 
+请求头：
+
+- `Authorization: Bearer <token>`
+
 ### api-users-me-update
 PUT /api/users/me √
 
 用途：更新当前登录用户的个人资料（昵称、头像等）。
+
+请求头：
+
+- `Authorization: Bearer <token>`
 
 ---
 
@@ -1450,10 +1784,18 @@ GET /api/points/balance √
 
 用途：获取当前登录用户的积分余额。
 
+请求头：
+
+- `Authorization: Bearer <token>`
+
 ### api-points-ledgers
 GET /api/points/ledgers √
 
 用途：获取当前登录用户的积分流水列表。
+
+请求头：
+
+- `Authorization: Bearer <token>`
 
 ---
 
@@ -1465,10 +1807,18 @@ GET /api/vip/status √
 
 用途：获取当前登录用户的会员状态（是否会员、到期时间等）。
 
+请求头：
+
+- `Authorization: Bearer <token>`
+
 ---
 
 ## module-tournament-app
-Tournament 模块（小程序：赛事） ×
+Tournament 模块（小程序：赛事） √
+
+请求头（报名/取消报名必需；查询排名可选）：
+
+- `Authorization: Bearer <token>`
 
 ### api-tournaments-list
 GET /api/tournaments √
@@ -1481,19 +1831,133 @@ GET /api/tournaments/{id} √
 用途：赛事详情。
 
 ### api-tournaments-join
-POST /api/tournaments/{id}/join ×
+POST /api/tournaments/{id}/join √
 
-用途：报名参赛。
+用途：当前登录用户报名参加指定赛事。
+
+请求：
+
+- Method：`POST`
+- Path：`/api/tournaments/{id}/join`
+- Path 参数：
+  - `id`：赛事 ID
+
+成功响应：`data.joined=true`
+
+请求示例：
+
+```bash
+curl -X POST "http://localhost:8080/api/tournaments/4001/join" \
+  -H "Authorization: Bearer <token>"
+```
+
+成功响应示例：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "joined": true
+  },
+  "message": "ok"
+}
+```
 
 ### api-tournaments-cancel
-PUT /api/tournaments/{id}/cancel ×
+PUT /api/tournaments/{id}/cancel √
 
-用途：取消报名。
+用途：当前登录用户取消指定赛事的报名（幂等；重复取消仍返回成功）。
+
+请求：
+
+- Method：`PUT`
+- Path：`/api/tournaments/{id}/cancel`
+- Path 参数：
+  - `id`：赛事 ID
+
+成功响应：`data.canceled=true`
+
+请求示例：
+
+```bash
+curl -X PUT "http://localhost:8080/api/tournaments/4001/cancel" \
+  -H "Authorization: Bearer <token>"
+```
+
+成功响应示例：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "canceled": true
+  },
+  "message": "ok"
+}
+```
 
 ### api-tournaments-results
-GET /api/tournaments/{id}/results ×
+GET /api/tournaments/{id}/results √
 
-用途：查看赛事排名/成绩。
+用途：查看赛事排名/成绩列表；如携带登录态会额外返回当前用户名次。
+
+请求：
+
+- Method：`GET`
+- Path：`/api/tournaments/{id}/results`
+- Path 参数：
+  - `id`：赛事 ID
+- Query：
+  - `offset`：默认 0
+  - `limit`：默认 50，最大 200
+
+响应 `data`：
+
+- `items`：排名列表（按 rankNo 升序）
+- `my`：当前用户名次（可选；仅在携带登录态且有成绩时返回）
+
+`items/my` 字段：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| userId | number | 用户 ID |
+| rankNo | number | 名次 |
+| score | number | 分数（无则为 0） |
+| nickname | string | 昵称 |
+| avatarUrl | string | 头像 URL |
+
+请求示例：
+
+```bash
+curl -X GET "http://localhost:8080/api/tournaments/4001/results?offset=0&limit=50"
+```
+
+成功响应示例：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "items": [
+      {
+        "userId": 1003,
+        "rankNo": 1,
+        "score": 10,
+        "nickname": "小王",
+        "avatarUrl": ""
+      }
+    ],
+    "my": {
+      "userId": 1003,
+      "rankNo": 1,
+      "score": 10,
+      "nickname": "小王",
+      "avatarUrl": ""
+    }
+  },
+  "message": "ok"
+}
+```
 
 ---
 
@@ -1535,10 +1999,14 @@ GET /api/goods/{id} √
 ## module-redeem-app
 Redeem 模块（小程序：兑换订单） √
 
+请求头（以下接口通用）：
+
+- `Authorization: Bearer <token>`
+
 ### api-redeem-orders-create
 POST /api/redeem/orders √
 
-用途：创建兑换订单（扣减积分并生成订单号）。
+用途：创建兑换订单（userId 从 token 获取；扣减积分并生成订单号）。
 
 ### api-redeem-orders-list
 GET /api/redeem/orders √
@@ -1565,40 +2033,126 @@ POST /admin/auth/login ×
 
 用途：管理员登录并签发管理员 token。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L682-L694)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 当前为占位实现：直接返回固定 token（`admin_token_placeholder`）。
+
 ### api-admin-auth-me
 GET /admin/auth/me ×
 
 用途：获取当前管理员信息（用于后台鉴权/展示）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L696-L709)
+
+实现逻辑：
+
+1. 校验方法为 `GET`。
+2. 当前为占位实现：直接返回固定管理员信息（`id=1, username=admin`）。
 
 ### api-admin-auth-logout
 POST /admin/auth/logout ×
 
 用途：管理员登出（可选：token 失效/黑名单）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L711-L721)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 当前为占位实现：直接返回 `logout=true`。
+
 ### api-admin-audit-logs
 GET /admin/audit/logs √
 
 用途：查询管理员关键操作审计日志。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L723-L792)
+
+实现逻辑：
+
+1. 校验方法为 `GET`，并校验 `db` 已注入。
+2. 解析 query：`offset/limit/adminId`（分页兜底 limit 默认 20，最大 200）。
+3. 查询 `admin_audit_log` 表，按 `id DESC` 返回列表。
+4. `detail_json` 以 JSON 字节读取并回填到响应 `detailJson`。
+5. 返回 `SendJSuccess`。
 
 ### api-admin-points-adjust
 POST /admin/points/adjust ×
 
 用途：管理员给用户赠送/扣减积分（需落审计与流水）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L794-L804)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 当前为占位实现：直接返回 `adjusted=true`。
+
 ### api-admin-users-drinks-use
 PUT /admin/users/{id}/drinks/use ×
 
 用途：管理员核销用户饮品数量（点一次 -1）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L806-L817)
+
+实现逻辑：
+
+1. 校验方法为 `PUT`。
+2. 解析 path 参数 `id`（当前未做业务校验）。
+3. 当前为占位实现：直接返回 `used=true`。
 
 ### api-admin-tournament-results-publish
 POST /admin/tournaments/{id}/results/publish ×
 
 用途：发布赛事排名（tournament_result）并记录发布人。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L819-L830)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 解析 path 参数 `id`（当前未做业务校验）。
+3. 当前为占位实现：直接返回 `published=true`。
+
 ### api-admin-tournament-awards-grant
 POST /admin/tournaments/{id}/awards/grant ×
 
 用途：给赛事前 N 名发积分奖励（需幂等，避免重复发奖）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L832-L843)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 解析 path 参数 `id`（当前未做业务校验）。
+3. 当前为占位实现：直接返回 `granted=true`。
 
 ---
 
@@ -1609,6 +2163,16 @@ Media 模块（媒体上传/访问） ×
 POST /admin/media/upload ×
 
 用途：上传封面/图片等媒体文件，返回可访问 URL。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L845-L858)
+
+实现逻辑：
+
+1. 校验方法为 `POST`。
+2. 当前为占位实现：直接返回空 `url` 与 `createdAt`（RFC3339）。
 
 ---
 

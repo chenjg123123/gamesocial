@@ -4,7 +4,11 @@ package middleware
 import (
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
+
+	"gamesocial/modules/auth"
 )
 
 // Middleware 是对 http.Handler 的装饰器：输入一个 handler，输出包裹后的 handler。
@@ -45,20 +49,73 @@ func Logging() Middleware {
 	}
 }
 
+func InjectUserIDFromToken(tokenSecret string) Middleware {
+	secret := []byte(strings.TrimSpace(tokenSecret))
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if len(secret) != 0 && r != nil && r.Header.Get("X-User-Id") == "" {
+				authz := strings.TrimSpace(r.Header.Get("Authorization"))
+				if authz != "" {
+					token := authz
+					parts := strings.Fields(authz)
+					if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+						token = parts[1]
+					}
+					uid, err := auth.ParseTokenV1(token, secret, time.Now())
+					if err == nil && uid != 0 {
+						r.Header.Set("X-User-Id", strconv.FormatUint(uid, 10))
+					}
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // CORS 为跨域请求设置响应头，并在 OPTIONS 预检请求时直接返回 204。
 func CORS(allowOrigin string) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := allowOrigin
+			origin := strings.TrimSpace(allowOrigin)
 			if origin == "" {
 				origin = "*"
 			}
 
-			// 允许前端跨域访问（小程序/后台管理台/本地调试等）。
-			w.Header().Set("Access-Control-Allow-Origin", origin)
+			reqOrigin := r.Header.Get("Origin")
+			if origin == "*" && reqOrigin != "" {
+				origin = reqOrigin
+				w.Header().Add("Vary", "Origin")
+			} else if origin != "*" && reqOrigin != "" && strings.Contains(origin, ",") {
+				allowed := false
+				for _, item := range strings.Split(origin, ",") {
+					if strings.TrimSpace(item) == reqOrigin {
+						allowed = true
+						break
+					}
+				}
+				if allowed {
+					origin = reqOrigin
+					w.Header().Add("Vary", "Origin")
+				} else {
+					origin = ""
+				}
+			}
+
+			if origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			if reqHeaders := r.Header.Get("Access-Control-Request-Headers"); reqHeaders != "" {
+				w.Header().Set("Access-Control-Allow-Headers", reqHeaders)
+				w.Header().Add("Vary", "Access-Control-Request-Headers")
+			} else {
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			}
+			if origin != "" && origin != "*" {
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			} else {
+				w.Header().Del("Access-Control-Allow-Credentials")
+			}
 
 			// 预检请求无需进入业务 handler。
 			if r.Method == http.MethodOptions {
