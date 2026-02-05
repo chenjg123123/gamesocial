@@ -2110,22 +2110,45 @@ POST /admin/tournaments/{id}/awards/grant ×
 ---
 
 ## module-media
-Media 模块（媒体上传/访问） ×
+Media 模块（媒体上传/访问） √
+
+### api-media-upload
+POST /api/media/upload √
+
+用途：小程序端上传图片到腾讯云 COS，返回可访问 URL（不落本地磁盘）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L150-L176)
+- Handler：[AppMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L128-L153)
+- Store：[COSStore](file:///e:/VUE3/新建文件夹/GameSocial/internal/media/store.go#L33-L124)
+
+实现逻辑：
+
+1. 校验方法为 `POST`，并校验登录态（从 token 解析 userId）。
+2. 解析 multipart 表单中的 `file` 文件字段。
+3. 校验文件类型为 `image/*`，并按配置限制文件大小。
+4. 上传到腾讯云 COS，返回 `url/key/createdAt`。
+
+---
 
 ### api-admin-media-upload
-POST /admin/media/upload ×
+POST /admin/media/upload √
 
 用途：上传封面/图片等媒体文件，返回可访问 URL。
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_endpoints.go#L845-L858)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L210-L219)
+- Handler：[AdminMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L105-L126)
+- Store：[COSStore](file:///e:/VUE3/新建文件夹/GameSocial/internal/media/store.go#L33-L124)
 
 实现逻辑：
 
 1. 校验方法为 `POST`。
-2. 当前为占位实现：直接返回空 `url` 与 `createdAt`（RFC3339）。
+2. 解析 multipart 表单中的 `file` 文件字段。
+3. 校验文件类型为 `image/*`，并按配置限制文件大小。
+4. 上传到腾讯云 COS，返回 `url/key/createdAt`。
 
 ---
 

@@ -49,7 +49,7 @@
   - × [POST /admin/tournaments/{id}/results/publish](#api-admin-tournament-results-publish)
   - × [POST /admin/tournaments/{id}/awards/grant](#api-admin-tournament-awards-grant)
 - × [Media 模块（媒体上传/访问）](#module-media)
-  - × [POST /admin/media/upload](#api-admin-media-upload)
+  - √ [POST /admin/media/upload](#api-admin-media-upload)
 
 ## 0. 通用约定
 
@@ -1714,19 +1714,38 @@ POST /admin/tournaments/{id}/awards/grant ×
 ---
 
 ## module-media
-Media 模块（媒体上传/访问） ×
+Media 模块（媒体上传/访问） √
 
 ### api-admin-media-upload
-POST /admin/media/upload ×
+POST /admin/media/upload √
 
 用途：上传封面/图片等媒体文件，返回可访问 URL。
 
 实现位置：
 
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[AdminMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L100-L113)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L210-L219)
+- Handler：[AdminMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L105-L126)
+- Store：[COSStore](file:///e:/VUE3/新建文件夹/GameSocial/internal/media/store.go#L33-L124)
 
 实现逻辑：
 
 1. 校验方法为 `POST`。
-2. 当前为占位实现：直接返回空 `url` 与 `createdAt`（RFC3339）。
+2. 解析 multipart 表单中的 `file` 文件字段。
+3. 校验文件类型为 `image/*`，并按配置限制文件大小。
+4. 上传到腾讯云 COS，返回 `url/key/createdAt`。
+
+请求：
+
+- Method：`POST`
+- Path：`/admin/media/upload`
+- Content-Type：`multipart/form-data`
+- Form：
+  - `file`：图片文件（必须；仅允许 `image/*`）
+
+成功响应 `data`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| url | string | 可访问 URL |
+| key | string | COS 对象 key |
+| createdAt | string | 创建时间（RFC3339） |

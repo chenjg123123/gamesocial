@@ -86,9 +86,15 @@ func AppUserMeUpdate(svc user.Service) http.HandlerFunc {
 		SendJSuccess(w, struct {
 			Nickname  string `json:"nickname"`
 			AvatarURL string `json:"avatarUrl"`
+			Level     int    `json:"level"`
+			Exp       int64  `json:"exp"`
+			CreatedAt string `json:"createdAt"`
 		}{
 			Nickname:  out.Nickname,
 			AvatarURL: out.AvatarURL,
+			Level:     out.Level,
+			Exp:       out.Exp,
+			CreatedAt: out.CreatedAt.Format(time.RFC3339),
 		})
 	}
 }

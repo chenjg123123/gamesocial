@@ -16,6 +16,7 @@ import (
 	"gamesocial/api/middleware"
 	"gamesocial/internal/config"
 	"gamesocial/internal/database"
+	"gamesocial/internal/media"
 	"gamesocial/internal/wechat"
 	"gamesocial/modules/auth"
 	"gamesocial/modules/item"
@@ -43,6 +44,11 @@ type App struct {
 	UserSvc user.Service
 	// RedeemSvc: 兑换订单业务服务。
 	RedeemSvc redeem.Service
+
+	// MediaStore: 媒体上传存储（如腾讯云 COS）。
+	MediaStore media.Store
+	// MediaMaxUploadBytes: 上传文件大小限制（字节）。
+	MediaMaxUploadBytes int64
 }
 
 func main() {
@@ -83,6 +89,21 @@ func main() {
 		TaskSvc:       task.NewService(db),
 		UserSvc:       user.NewService(db),
 		RedeemSvc:     redeem.NewService(db),
+	}
+
+	app.MediaMaxUploadBytes = cfg.MediaMaxUploadMB * 1024 * 1024
+	if cfg.MediaCOSBucketURL != "" {
+		store, err := media.NewCOSStore(
+			cfg.MediaCOSBucketURL,
+			cfg.MediaCOSSecretID,
+			cfg.MediaCOSSecretKey,
+			cfg.MediaCOSPublicBaseURL,
+			cfg.MediaCOSKeyPathPrefix,
+		)
+		if err != nil {
+			log.Fatalf("init media store: %v", err)
+		}
+		app.MediaStore = store
 	}
 
 	// 使用 net/http 的 ServeMux 进行路由分发（Go 1.22+ 支持 "METHOD /path" 形式的模式）。
@@ -151,6 +172,7 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("GET /api/tasks", handlers.AppTasksList(app.TaskSvc))
 	mux.HandleFunc("POST /api/tasks/checkin", handlers.AppTasksCheckin())
 	mux.HandleFunc("POST /api/tasks/{taskCode}/claim", handlers.AppTasksClaim())
+	mux.HandleFunc("POST /api/media/upload", handlers.AppMediaUpload(app.MediaStore, app.MediaMaxUploadBytes))
 
 	// 管理员侧：商品管理 CRUD（暂未接入管理员鉴权中间件）。
 	mux.HandleFunc("POST /admin/goods", handlers.AdminGoodsCreate(app.ItemSvc))
@@ -193,5 +215,5 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("PUT /admin/users/{id}/drinks/use", handlers.AdminUsersDrinksUse())
 	mux.HandleFunc("POST /admin/tournaments/{id}/results/publish", handlers.AdminTournamentResultsPublish())
 	mux.HandleFunc("POST /admin/tournaments/{id}/awards/grant", handlers.AdminTournamentAwardsGrant())
-	mux.HandleFunc("POST /admin/media/upload", handlers.AdminMediaUpload())
+	mux.HandleFunc("POST /admin/media/upload", handlers.AdminMediaUpload(app.MediaStore, app.MediaMaxUploadBytes))
 }

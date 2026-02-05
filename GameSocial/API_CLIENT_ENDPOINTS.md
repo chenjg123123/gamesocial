@@ -40,6 +40,8 @@
   - √ [GET /api/redeem/orders](#api-redeem-orders-list)
   - √ [GET /api/redeem/orders/{id}](#api-redeem-orders-get)
   - √ [PUT /api/redeem/orders/{id}/cancel](#api-redeem-orders-cancel)
+- √ [Media 模块（小程序：图片上传）](#module-media-app)
+  - √ [POST /api/media/upload](#api-media-upload)
 
 ## 0. 通用约定
 
@@ -274,6 +276,9 @@ GET /api/users/me √
 |---|---|---|
 | nickname | string | 昵称（为空表示未设置） |
 | avatarUrl | string | 头像 URL（为空表示未设置） |
+| level | number | 用户等级（默认 1） |
+| exp | number | 经验值（累积） |
+| createdAt | string | 注册时间（RFC3339） |
 
 请求示例：
 
@@ -289,7 +294,10 @@ curl -X GET "http://localhost:8080/api/users/me" \
   "code": 200,
   "data": {
     "nickname": "小明",
-    "avatarUrl": ""
+    "avatarUrl": "",
+    "level": 1,
+    "exp": 0,
+    "createdAt": "2026-02-05T04:48:47Z"
   },
   "message": "ok"
 }
@@ -745,3 +753,61 @@ PUT /api/redeem/orders/{id}/cancel √
 - 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L143-L146)
 - Handler：[AppRedeemOrderCancel](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_redeem.go#L117-L148)
 - Service：[redeem.CancelOrder](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L302-L336)
+
+---
+
+## module-media-app
+Media 模块（小程序：图片上传） √
+
+请求头：
+
+- `Authorization: Bearer <token>`
+
+### api-media-upload
+POST /api/media/upload √
+
+用途：上传图片到腾讯云 COS，返回可访问的 URL；前端可将返回的 `url` 写入 `avatarUrl/coverUrl` 等字段。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L150-L176)
+- Handler：[AppMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L128-L153)
+- Store：[COSStore](file:///e:/VUE3/新建文件夹/GameSocial/internal/media/store.go#L33-L124)
+
+请求：
+
+- Method：`POST`
+- Path：`/api/media/upload`
+- Content-Type：`multipart/form-data`
+- Form：
+  - `file`：图片文件（必须；仅允许 `image/*`）
+
+成功响应 `data`：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| url | string | 可访问 URL |
+| key | string | COS 对象 key |
+| createdAt | string | 创建时间（RFC3339） |
+
+请求示例：
+
+```bash
+curl -X POST "http://localhost:8080/api/media/upload" \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@./avatar.png"
+```
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "url": "https://your-bucket.cos.ap-shanghai.myqcloud.com/uploads/20260205/xxxx.png",
+    "key": "uploads/20260205/xxxx.png",
+    "createdAt": "2026-02-05T04:48:47Z"
+  },
+  "message": "ok"
+}
+```
