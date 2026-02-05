@@ -46,21 +46,100 @@ const login = async () => {
 </script>
 
 <template>
-  <div class="page">
-    <div class="container">
-      <div class="grid" style="max-width: 520px; margin: 0 auto; padding-top: 18vh">
-        <div class="card">
-          <div class="title">登录</div>
-          <div class="help" style="margin-top: 8px">请输入账号凭证以继续访问。</div>
-          <div class="grid" style="margin-top: 12px">
-            <input v-model="openIdDraft" class="input" placeholder="请输入账号凭证" />
-            <button class="btn" :disabled="loading" @click="login">{{ loading ? '登录中…' : '登录' }}</button>
-          </div>
-        </div>
-        <div class="card card--flat muted" style="box-shadow: none">
-          登录后会自动跳回你刚才访问的页面。
-        </div>
+  <div class="login-page">
+    <div class="login-card card">
+      <div class="brand">GameSocial</div>
+      <div class="title">欢迎回来</div>
+      <div class="subtitle">请输入您的账号凭证以登录</div>
+      
+      <div class="form-group">
+        <input 
+          v-model="openIdDraft" 
+          class="input" 
+          placeholder="请输入 OpenID / 账号凭证" 
+          @keyup.enter="login"
+        />
+      </div>
+      
+      <button class="btn btn--primary btn--block" :disabled="loading" @click="login">
+        {{ loading ? '登录中…' : '立即登录' }}
+      </button>
+      
+      <div class="footer-tip">
+        测试阶段直接输入 OpenID 即可登录
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #f3f4f6;
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.brand {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary);
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  color: #111827;
+}
+
+.subtitle {
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  margin-top: 8px;
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  border-color: var(--primary);
+}
+
+.btn--block {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+}
+
+.footer-tip {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+}
+</style>

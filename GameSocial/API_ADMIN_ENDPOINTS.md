@@ -124,8 +124,8 @@ GET /health √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L129-L133)
-- Handler：[health.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/health.go#L1-L21)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L129-L133)
+- Handler：[health.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/health.go#L1-L21)
 
 实现逻辑：
 
@@ -178,9 +178,9 @@ POST /admin/goods √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[AdminGoodsCreate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go#L12-L43)
+- Service：[item.CreateGoods](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go#L66-L99)
 
 实现逻辑：
 
@@ -250,9 +250,9 @@ GET /admin/goods √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[AdminGoodsList](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go#L153-L187)
+- Service：[item.ListGoods](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go#L197-L250)
 
 实现逻辑：
 
@@ -314,9 +314,9 @@ GET /admin/goods/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[AdminGoodsGet](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go#L119-L151)
+- Service：[item.GetGoods](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go#L168-L195)
 
 实现逻辑：
 
@@ -365,9 +365,9 @@ PUT /admin/goods/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[AdminGoodsUpdate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go#L45-L84)
+- Service：[item.UpdateGoods](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go#L101-L139)
 
 实现逻辑：
 
@@ -427,9 +427,9 @@ DELETE /admin/goods/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L154-L160)
-- Handler：[admin_goods.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_goods.go)
-- Service：[item/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/item/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L154-L160)
+- Handler：[AdminGoodsDelete](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_goods.go#L86-L117)
+- Service：[item.DeleteGoods](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go#L141-L166)
 
 实现逻辑：
 
@@ -473,9 +473,9 @@ POST /admin/tournaments √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go#L1-L44)
-- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go#L1-L131)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[AdminTournamentCreate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go#L12-L43)
+- Service：[tournament.Create](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L96-L131)
 
 实现逻辑：
 
@@ -549,9 +549,9 @@ GET /admin/tournaments √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
-- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[AdminTournamentList](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go#L150-L183)
+- Service：[tournament.List](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L227-L279)
 
 实现逻辑：
 
@@ -616,9 +616,9 @@ GET /admin/tournaments/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
-- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[AdminTournamentGet](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go#L117-L148)
+- Service：[tournament.Get](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L197-L225)
 
 实现逻辑：
 
@@ -663,9 +663,9 @@ PUT /admin/tournaments/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
-- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[AdminTournamentUpdate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go#L45-L83)
+- Service：[tournament.Update](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L133-L169)
 
 实现逻辑：
 
@@ -723,9 +723,9 @@ DELETE /admin/tournaments/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L161-L166)
-- Handler：[admin_tournaments.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_tournaments.go)
-- Service：[tournament/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/tournament/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L161-L166)
+- Handler：[AdminTournamentDelete](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_tournaments.go#L85-L115)
+- Service：[tournament.Delete](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L171-L195)
 
 实现逻辑：
 
@@ -766,9 +766,9 @@ POST /admin/task-defs √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[AdminTaskDefCreate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go#L12-L42)
+- Service：[task.CreateTaskDef](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go#L72-L114)
 
 实现逻辑：
 
@@ -840,9 +840,9 @@ GET /admin/task-defs √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[AdminTaskDefList](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go#L149-L182)
+- Service：[task.ListTaskDef](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go#L218-L274)
 
 实现逻辑：
 
@@ -905,9 +905,9 @@ GET /admin/task-defs/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[AdminTaskDefGet](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go#L116-L147)
+- Service：[task.GetTaskDef](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go#L187-L216)
 
 实现逻辑：
 
@@ -951,9 +951,9 @@ PUT /admin/task-defs/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[AdminTaskDefUpdate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go#L44-L82)
+- Service：[task.UpdateTaskDef](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go#L116-L159)
 
 实现逻辑：
 
@@ -1010,9 +1010,9 @@ DELETE /admin/task-defs/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L168-L174)
-- Handler：[admin_task_defs.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_task_defs.go)
-- Service：[task/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/task/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L168-L174)
+- Handler：[AdminTaskDefDelete](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_task_defs.go#L84-L114)
+- Service：[task.DeleteTaskDef](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go#L161-L185)
 
 实现逻辑：
 
@@ -1053,9 +1053,9 @@ GET /admin/users √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L175-L178)
-- Handler：[admin_users.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_users.go)
-- Service：[user/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/user/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[AdminUserList](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_users.go#L45-L78)
+- Service：[user.List](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go#L85-L135)
 
 实现逻辑：
 
@@ -1088,6 +1088,8 @@ curl -X GET "http://localhost:8080/admin/users?offset=0&limit=20&status=1"
 | nickname | string | 昵称 |
 | avatarUrl | string | 头像 |
 | status | number | 1=正常，0=封禁 |
+| level | number | 用户等级（默认 1） |
+| exp | number | 经验值（累积） |
 | createdAt | string | 创建时间 |
 | updatedAt | string | 更新时间 |
 
@@ -1104,6 +1106,8 @@ curl -X GET "http://localhost:8080/admin/users?offset=0&limit=20&status=1"
       "nickname": "小明",
       "avatarUrl": "",
       "status": 1,
+      "level": 1,
+      "exp": 10,
       "createdAt": "2026-01-29T12:05:00Z",
       "updatedAt": "2026-01-29T12:05:00Z"
     },
@@ -1114,6 +1118,8 @@ curl -X GET "http://localhost:8080/admin/users?offset=0&limit=20&status=1"
       "nickname": "",
       "avatarUrl": "",
       "status": 1,
+      "level": 2,
+      "exp": 120,
       "createdAt": "2026-01-29T12:00:00Z",
       "updatedAt": "2026-01-29T12:00:00Z"
     }
@@ -1129,9 +1135,9 @@ GET /admin/users/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L175-L178)
-- Handler：[admin_users.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_users.go#L1-L118)
-- Service：[user/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/user/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[AdminUserGet](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_users.go#L12-L43)
+- Service：[user.Get](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go#L54-L83)
 
 实现逻辑：
 
@@ -1160,6 +1166,8 @@ curl -X GET "http://localhost:8080/admin/users/1001"
     "nickname": "",
     "avatarUrl": "",
     "status": 1,
+    "level": 2,
+    "exp": 120,
     "createdAt": "2026-01-29T12:00:00Z",
     "updatedAt": "2026-01-29T12:00:00Z"
   },
@@ -1174,9 +1182,9 @@ PUT /admin/users/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L175-L178)
-- Handler：[admin_users.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_users.go#L1-L118)
-- Service：[user/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/user/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L175-L178)
+- Handler：[AdminUserUpdate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_users.go#L80-L118)
+- Service：[user.Update](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go#L134-L160)
 
 实现逻辑：
 
@@ -1193,9 +1201,7 @@ PUT /admin/users/{id} √
 | avatarUrl | string | 否 | 头像 URL（可为空字符串） |
 | status | number | 否 | 1=正常，0=封禁 |
 
-注意：
-
-- 当前实现中，如果 `status` 解析为 0，会被后端默认写入 1（因此“封禁=0”在当前实现下不会生效）。
+注意：`status` 不传则不修改当前用户状态。
 
 请求示例：
 
@@ -1219,6 +1225,8 @@ curl -X PUT "http://localhost:8080/admin/users/1001" \
     "nickname": "9527",
     "avatarUrl": "",
     "status": 1,
+    "level": 2,
+    "exp": 120,
     "createdAt": "2026-01-29T12:00:00Z",
     "updatedAt": "2026-01-29T12:45:00Z"
   },
@@ -1238,9 +1246,9 @@ POST /admin/redeem/orders √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go)
-- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[AdminRedeemOrderCreate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go#L12-L42)
+- Service：[redeem.CreateOrder](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L76-L146)
 
 实现逻辑：
 
@@ -1331,9 +1339,9 @@ GET /admin/redeem/orders √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go)
-- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[AdminRedeemOrderList](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go#L77-L116)
+- Service：[redeem.ListOrders](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L214-L274)
 
 实现逻辑：
 
@@ -1406,9 +1414,9 @@ GET /admin/redeem/orders/{id} √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go)
-- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[AdminRedeemOrderGet](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go#L44-L75)
+- Service：[redeem.GetOrder](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L147-L212)
 
 实现逻辑：
 
@@ -1458,9 +1466,9 @@ PUT /admin/redeem/orders/{id}/use √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go#L118-L160)
-- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go#L270-L323)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[AdminRedeemOrderUse](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go#L118-L160)
+- Service：[redeem.UseOrder](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L276-L302)
 
 实现逻辑：
 
@@ -1527,9 +1535,9 @@ PUT /admin/redeem/orders/{id}/cancel √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L180-L185)
-- Handler：[admin_redeem_orders.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/admin_redeem_orders.go#L162-L193)
-- Service：[redeem/service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/redeem/service.go#L299-L323)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L180-L185)
+- Handler：[AdminRedeemOrderCancel](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_redeem_orders.go#L162-L193)
+- Service：[redeem.CancelOrder](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L304-L333)
 
 实现逻辑：
 
@@ -1584,8 +1592,8 @@ POST /admin/auth/login ×
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L682-L694)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[AdminAuthLogin](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L8-L20)
 
 实现逻辑：
 
@@ -1599,8 +1607,8 @@ GET /admin/auth/me ×
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L696-L709)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[AdminAuthMe](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L22-L35)
 
 实现逻辑：
 
@@ -1614,8 +1622,8 @@ POST /admin/auth/logout ×
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L711-L721)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[AdminAuthLogout](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L37-L47)
 
 实现逻辑：
 
@@ -1629,8 +1637,8 @@ GET /admin/audit/logs √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L723-L792)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[AdminAuditLogs](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_audit_logs.go#L22-L91)
 
 实现逻辑：
 
@@ -1647,8 +1655,8 @@ POST /admin/points/adjust ×
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L794-L804)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[AdminPointsAdjust](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L49-L59)
 
 实现逻辑：
 
@@ -1662,8 +1670,8 @@ PUT /admin/users/{id}/drinks/use ×
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L806-L817)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[AdminUsersDrinksUse](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L61-L72)
 
 实现逻辑：
 
@@ -1678,8 +1686,8 @@ POST /admin/tournaments/{id}/results/publish ×
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L819-L830)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[AdminTournamentResultsPublish](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L74-L85)
 
 实现逻辑：
 
@@ -1694,8 +1702,8 @@ POST /admin/tournaments/{id}/awards/grant ×
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L832-L843)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[AdminTournamentAwardsGrant](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L87-L98)
 
 实现逻辑：
 
@@ -1715,8 +1723,8 @@ POST /admin/media/upload ×
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[app_endpoints.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_endpoints.go#L845-L858)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
+- Handler：[AdminMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L100-L113)
 
 实现逻辑：
 

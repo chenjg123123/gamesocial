@@ -57,10 +57,10 @@ type ListOrderRequest struct {
 // Service 定义 redeem 模块对外提供的业务接口（兑换订单 CRUD + 核销）。
 type Service interface {
 	CreateOrder(ctx context.Context, req CreateOrderRequest) (RedeemOrder, error)
-	GetOrder(ctx context.Context, id uint64) (RedeemOrder, error)
+	GetOrder(ctx context.Context, id uint64, userID uint64) (RedeemOrder, error)
 	ListOrders(ctx context.Context, req ListOrderRequest) ([]RedeemOrder, error)
 	UseOrder(ctx context.Context, id uint64, adminID uint64) (RedeemOrder, error)
-	CancelOrder(ctx context.Context, id uint64) (RedeemOrder, error)
+	CancelOrder(ctx context.Context, id uint64, userID uint64) (RedeemOrder, error)
 }
 
 type service struct {
@@ -99,8 +99,17 @@ func (s *service) CreateOrder(ctx context.Context, req CreateOrderRequest) (Rede
 		}
 		total += int64(it.Quantity) * it.PointsPrice
 	}
-
-	// 3) 开启事务：订单表与明细表需要同时成功写入。
+	//判断用户积分是否足够
+	var userPoints int64
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT balance FROM points_account WHERE user_id = ? FOR UPDATE
+	`, req.UserID).Scan(&userPoints); err != nil {
+		return RedeemOrder{}, err
+	}
+	if userPoints < total {
+		return RedeemOrder{}, errors.New("积分不足")
+	}
+	// 3) 开启事务：订单表与明细表还有余额表需要同时成功写入。
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return RedeemOrder{}, err
@@ -134,18 +143,24 @@ func (s *service) CreateOrder(ctx context.Context, req CreateOrderRequest) (Rede
 			return RedeemOrder{}, err
 		}
 	}
+	// 6) 更新用户积分余额：减去已用积分。
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE points_account SET balance = balance - ? WHERE user_id = ?
+	`, total, req.UserID); err != nil {
+		return RedeemOrder{}, err
+	}
 
-	// 6) 提交事务。
+	// 7) 提交事务。
 	if err := tx.Commit(); err != nil {
 		return RedeemOrder{}, err
 	}
 
-	// 7) 返回订单详情（包含 items）。
-	return s.GetOrder(ctx, uint64(id))
+	// 8) 返回订单详情（包含 items）。
+	return s.GetOrder(ctx, uint64(id), req.UserID)
 }
 
 // GetOrder 获取兑换订单详情（包含 items）。
-func (s *service) GetOrder(ctx context.Context, id uint64) (RedeemOrder, error) {
+func (s *service) GetOrder(ctx context.Context, id uint64, userID uint64) (RedeemOrder, error) {
 	// 1) 基础校验。
 	if s.db == nil {
 		return RedeemOrder{}, errors.New("database disabled")
@@ -158,12 +173,17 @@ func (s *service) GetOrder(ctx context.Context, id uint64) (RedeemOrder, error) 
 	var o RedeemOrder
 	var usedAdmin sql.NullInt64
 	var usedAt sql.NullTime
-	row := s.db.QueryRowContext(ctx, `
+	query := `
 		SELECT id, order_no, user_id, status, total_points, used_by_admin_id, used_at, created_at
 		FROM redeem_order
-		WHERE id = ?
-		LIMIT 1
-	`, id)
+		WHERE id = ?`
+	args := []any{id}
+	if userID != 0 {
+		query += " AND user_id = ?"
+		args = append(args, userID)
+	}
+	query += " LIMIT 1"
+	row := s.db.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&o.ID, &o.OrderNo, &o.UserID, &o.Status, &o.TotalPoints, &usedAdmin, &usedAt, &o.CreatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return RedeemOrder{}, fmt.Errorf("redeem_order not found")
@@ -293,11 +313,11 @@ func (s *service) UseOrder(ctx context.Context, id uint64, adminID uint64) (Rede
 	if affected == 0 {
 		return RedeemOrder{}, fmt.Errorf("order not found or not creatable")
 	}
-	return s.GetOrder(ctx, id)
+	return s.GetOrder(ctx, id, 0)
 }
 
 // CancelOrder 取消兑换订单（CREATED -> CANCELED）并返回最新订单详情。
-func (s *service) CancelOrder(ctx context.Context, id uint64) (RedeemOrder, error) {
+func (s *service) CancelOrder(ctx context.Context, id uint64, userID uint64) (RedeemOrder, error) {
 	// 1) 基础校验。
 	if s.db == nil {
 		return RedeemOrder{}, errors.New("database disabled")
@@ -307,11 +327,16 @@ func (s *service) CancelOrder(ctx context.Context, id uint64) (RedeemOrder, erro
 	}
 
 	// 2) 条件更新：只有 CREATED 才能取消。
-	result, err := s.db.ExecContext(ctx, `
+	query := `
 		UPDATE redeem_order
 		SET status = 'CANCELED'
-		WHERE id = ? AND status = 'CREATED'
-	`, id)
+		WHERE id = ? AND status = 'CREATED'`
+	args := []any{id}
+	if userID != 0 {
+		query += " AND user_id = ?"
+		args = append(args, userID)
+	}
+	result, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return RedeemOrder{}, err
 	}
@@ -319,7 +344,7 @@ func (s *service) CancelOrder(ctx context.Context, id uint64) (RedeemOrder, erro
 	if affected == 0 {
 		return RedeemOrder{}, fmt.Errorf("order not found or not cancelable")
 	}
-	return s.GetOrder(ctx, id)
+	return s.GetOrder(ctx, id, userID)
 }
 
 func newOrderNo() (string, error) {

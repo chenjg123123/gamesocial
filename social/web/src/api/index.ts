@@ -11,7 +11,7 @@ export const listFrom = <T,>(res: unknown): T[] => {
 export const authLoginWithOpenId = async (openId: string) => {
   const res = await request<{ token?: unknown; user?: unknown }>('/api/auth/wechat/login', {
     method: 'POST',
-    data: { openId : openId },
+    data: { openId },
   })
   const token = res && typeof res.token === 'string' ? res.token : ''
   const user = (res && res.user && typeof res.user === 'object' ? (res.user as AnyRecord) : null) || null
@@ -97,6 +97,11 @@ export const getTournamentResults = async (id: number, offset = 0, limit = 50) =
   const items = listFrom<AnyRecord>(res)
   const my = res && typeof res === 'object' ? ((res as { my?: unknown }).my as unknown) : undefined
   return { items, my }
+}
+
+export const listJoinedTournaments = async (offset = 0, limit = 50) => {
+  const res = await request<unknown>(`/api/tournaments/joined?offset=${offset}&limit=${limit}`)
+  return listFrom<AnyRecord>(res)
 }
 
 export const adminListGoods = async () => {
@@ -188,6 +193,11 @@ export const adminCancelRedeemOrder = async (id: number) => {
   await request(`/admin/redeem/orders/${id}/cancel`, { method: 'PUT' })
 }
 
-export const adminCreateRedeemOrder = async (payload: AnyRecord) => {
-  return await request<AnyRecord>('/admin/redeem/orders', { method: 'POST', data: payload })
+export const adminCreateRedeemOrder = async (items: Array<{ goodsId: number; quantity: number; pointsPrice: number }>) => {
+  return await request<AnyRecord>('/admin/redeem/orders', { method: 'POST', data: { items } })
+}
+
+export const adminListAuditLogs = async (offset = 0, limit = 50) => {
+  const res = await request<unknown>(`/admin/audit/logs?offset=${offset}&limit=${limit}`)
+  return listFrom<AnyRecord>(res)
 }

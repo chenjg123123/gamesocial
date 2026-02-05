@@ -16,6 +16,7 @@ import {
   adminListTaskDefs,
   adminListTournaments,
   adminListUsers,
+  adminListAuditLogs,
   adminUpdateUser,
   adminUpsertGoods,
   adminUpsertTaskDef,
@@ -24,7 +25,7 @@ import {
 } from '../../api'
 import { useToastStore } from '../../stores/toast'
 
-type TabKey = 'goods' | 'tournaments' | 'taskDefs' | 'users' | 'orders'
+type TabKey = 'goods' | 'tournaments' | 'taskDefs' | 'users' | 'orders' | 'audit'
 
 const toast = useToastStore()
 
@@ -36,6 +37,7 @@ const tournaments = ref<Array<Record<string, unknown>>>([])
 const taskDefs = ref<Array<Record<string, unknown>>>([])
 const users = ref<Array<Record<string, unknown>>>([])
 const orders = ref<Array<Record<string, unknown>>>([])
+const auditLogs = ref<Array<Record<string, unknown>>>([])
 
 const goodsForm = ref({ id: '', name: '', coverUrl: '', pointsPrice: '', stock: '', status: '1' })
 const tournamentForm = ref({
@@ -58,14 +60,15 @@ const taskDefForm = ref({
   status: '1',
 })
 const userForm = ref({ id: '', nickname: '', avatarUrl: '', status: '1' })
-const orderForm = ref({ userId: '', goodsId: '', quantity: '1', pointsPrice: '' })
+const orderForm = ref({ goodsId: '', quantity: '1', pointsPrice: '' })
 
 const title = computed(() => {
   if (tab.value === 'goods') return '商品管理'
   if (tab.value === 'tournaments') return '赛事管理'
   if (tab.value === 'taskDefs') return '任务定义'
   if (tab.value === 'users') return '用户管理'
-  return '订单管理'
+  if (tab.value === 'orders') return '订单管理'
+  return '审计日志'
 })
 
 const asNumber = (v: unknown) => {
@@ -89,7 +92,8 @@ const refreshCurrent = async () => {
   if (tab.value === 'tournaments') return loadTournaments()
   if (tab.value === 'taskDefs') return loadTaskDefs()
   if (tab.value === 'users') return loadUsers()
-  return loadOrders()
+  if (tab.value === 'orders') return loadOrders()
+  return loadAuditLogs()
 }
 
 const loadGoods = async () => {
@@ -429,6 +433,18 @@ const loadOrders = async () => {
   }
 }
 
+const loadAuditLogs = async () => {
+  try {
+    await withLoading(async () => {
+      auditLogs.value = await adminListAuditLogs()
+    })
+  } catch (e) {
+    const err = e as { message?: unknown }
+    auditLogs.value = []
+    toast.show((typeof err.message === 'string' && err.message) || '加载失败', 'error')
+  }
+}
+
 const useOrder = async (id: number) => {
   try {
     await withLoading(async () => {
@@ -456,24 +472,23 @@ const cancelOrder = async (id: number) => {
 }
 
 const resetOrderForm = () => {
-  orderForm.value = { userId: '', goodsId: '', quantity: '1', pointsPrice: '' }
+  orderForm.value = { goodsId: '', quantity: '1', pointsPrice: '' }
 }
 
 const submitOrder = async () => {
   const form = orderForm.value
-  const userId = asNumber(form.userId)
   const goodsId = asNumber(form.goodsId)
   const quantity = asNumber(form.quantity)
   const pointsPriceStr = safeStr(form.pointsPrice).trim()
   const pointsPrice = asNumber(pointsPriceStr)
-  if (!userId || !goodsId || !quantity || pointsPriceStr === '' || pointsPrice < 0) {
-    toast.show('请填写 userId/goodsId/数量/pointsPrice', 'error')
+  if (!goodsId || !quantity || pointsPriceStr === '' || pointsPrice < 0) {
+    toast.show('请填写 goodsId/数量/pointsPrice', 'error')
     return
   }
-  const payload = { userId, items: [{ goodsId, quantity, pointsPrice }] }
+  const items = [{ goodsId, quantity, pointsPrice }]
   try {
     const res = await withLoading(async () => {
-      return await adminCreateRedeemOrder(payload)
+      return await adminCreateRedeemOrder(items)
     })
     const orderNo = safeStr(res.orderNo || res.id)
     toast.show(orderNo ? `创建成功：${orderNo}` : '创建成功', 'success')
@@ -507,6 +522,7 @@ onMounted(() => {
       <button class="tab" :class="{ 'tab--active': tab === 'taskDefs' }" @click="switchTab('taskDefs')">任务</button>
       <button class="tab" :class="{ 'tab--active': tab === 'users' }" @click="switchTab('users')">用户</button>
       <button class="tab" :class="{ 'tab--active': tab === 'orders' }" @click="switchTab('orders')">订单</button>
+      <button class="tab" :class="{ 'tab--active': tab === 'audit' }" @click="switchTab('audit')">审计</button>
     </div>
   </div>
 
@@ -671,12 +687,11 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-else class="grid">
+      <div v-else-if="tab === 'orders'" class="grid">
         <div class="card">
           <div class="title">创建订单</div>
           <div class="grid" style="margin-top: 10px">
             <div class="row">
-              <input v-model="orderForm.userId" class="input" placeholder="userId" />
               <input v-model="orderForm.goodsId" class="input" placeholder="goodsId" />
             </div>
             <div class="row">
@@ -699,12 +714,32 @@ onMounted(() => {
                 <div>
                   <div class="title">{{ safeStr(o.orderNo) || `订单#${safeStr(o.id)}` }}</div>
                   <div class="muted" style="margin-top: 6px">
-                    id={{ safeStr(o.id) }} · userId={{ safeStr(o.userId) }} · status={{ safeStr(o.status) }}
+                    id={{ safeStr(o.id) }} · status={{ safeStr(o.status) }}
                   </div>
                 </div>
                 <div class="spacer" />
                 <button class="btn btn--ghost" :disabled="loading" @click="useOrder(asNumber(o.id))">核销</button>
                 <button class="btn btn--danger" :disabled="loading" @click="cancelOrder(asNumber(o.id))">取消</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="grid">
+        <div class="card">
+          <div class="title">审计日志</div>
+          <div class="grid" style="margin-top: 10px">
+            <div v-if="auditLogs.length === 0" class="muted">暂无数据</div>
+            <div v-for="l in auditLogs" :key="safeStr(l.id)" class="card card--flat">
+              <div class="row">
+                <div>
+                  <div class="title">{{ safeStr(l.action) || '操作' }}</div>
+                  <div class="muted" style="margin-top: 6px">
+                    admin={{ safeStr(l.adminId) }} · ip={{ safeStr(l.ip) }} · {{ safeStr(l.createdAt) }}
+                  </div>
+                  <div v-if="l.targetId" class="muted" style="margin-top: 4px">targetId={{ l.targetId }}</div>
+                </div>
               </div>
             </div>
           </div>

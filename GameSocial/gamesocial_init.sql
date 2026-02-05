@@ -40,6 +40,8 @@ CREATE TABLE `user` (
   nickname VARCHAR(64) NULL COMMENT '用户昵称',
   avatar_url VARCHAR(512) NULL COMMENT '头像 URL',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1=正常；0=禁用',
+  level INT NOT NULL DEFAULT 1 COMMENT '用户等级（由经验值映射，默认 1）',
+  exp BIGINT NOT NULL DEFAULT 0 COMMENT '经验值（累积）',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -47,15 +49,13 @@ CREATE TABLE `user` (
   KEY idx_user_unionid (unionid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='小程序用户主表（openid 唯一）';
 
--- user_level：用户等级/经验表（与 user 一对一）。
+-- user_level：等级配置表（用于管理员配置每个等级所需经验阈值）。
 CREATE TABLE user_level (
-  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户 ID（对应 user.id，一对一）',
-  level INT NOT NULL DEFAULT 1 COMMENT '等级（从 1 开始）',
-  exp BIGINT NOT NULL DEFAULT 0 COMMENT '经验值（累积）',
+  level INT NOT NULL COMMENT '等级（从 1 开始）',
+  exp_required BIGINT NOT NULL COMMENT '达到该等级所需经验（阈值）',
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (user_id),
-  CONSTRAINT fk_user_level_user FOREIGN KEY (user_id) REFERENCES `user`(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户等级/经验（与 user 一对一）';
+  PRIMARY KEY (level)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='等级配置（经验阈值）';
 
 -- vip_subscription：VIP 订阅记录（可用于月卡等）。
 CREATE TABLE vip_subscription (
@@ -65,6 +65,9 @@ CREATE TABLE vip_subscription (
   start_at DATETIME NOT NULL COMMENT '生效时间',
   end_at DATETIME NOT NULL COMMENT '到期时间',
   status VARCHAR(16) NOT NULL COMMENT '订阅状态（例如 ACTIVE/EXPIRED/CANCELED）',
+  vip_level INT NOT NULL DEFAULT 1 COMMENT '本次开通的会员等级（>=1）',
+  amount_cent BIGINT NOT NULL DEFAULT 0 COMMENT '充值金额（分）',
+  pay_channel VARCHAR(32) NULL COMMENT '支付渠道（可为空）',
   pay_order_no VARCHAR(64) NULL COMMENT '支付订单号（用于幂等/对账，可为空）',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
@@ -318,31 +321,32 @@ ON DUPLICATE KEY UPDATE
   rule_json = VALUES(rule_json);
 
 -- 预置演示用户（开发用）。
-INSERT INTO `user` (id, openid, unionid, nickname, avatar_url, status, created_at, updated_at)
+INSERT INTO `user` (id, openid, unionid, nickname, avatar_url, status, level, exp, created_at, updated_at)
 VALUES
-  (1001, 'openid_u1001', NULL, '阿哲', 'https://example.com/avatar/u1001.png', 1, NOW(), NOW()),
-  (1002, 'openid_u1002', NULL, '小明', 'https://example.com/avatar/u1002.png', 1, NOW(), NOW()),
-  (1003, 'openid_u1003', NULL, '阿强', 'https://example.com/avatar/u1003.png', 1, NOW(), NOW()),
-  (1004, 'openid_u1004', NULL, '小雨', 'https://example.com/avatar/u1004.png', 1, NOW(), NOW()),
-  (1005, 'openid_u1005', NULL, 'Kyo',  'https://example.com/avatar/u1005.png', 1, NOW(), NOW())
+  (1001, 'openid_u1001', NULL, '阿哲', 'https://example.com/avatar/u1001.png', 1, 2, 120, NOW(), NOW()),
+  (1002, 'openid_u1002', NULL, '小明', 'https://example.com/avatar/u1002.png', 1, 1, 10, NOW(), NOW()),
+  (1003, 'openid_u1003', NULL, '阿强', 'https://example.com/avatar/u1003.png', 1, 4, 520, NOW(), NOW()),
+  (1004, 'openid_u1004', NULL, '小雨', 'https://example.com/avatar/u1004.png', 1, 2, 60, NOW(), NOW()),
+  (1005, 'openid_u1005', NULL, 'Kyo',  'https://example.com/avatar/u1005.png', 1, 3, 260, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
   unionid = VALUES(unionid),
   nickname = VALUES(nickname),
   avatar_url = VALUES(avatar_url),
   status = VALUES(status),
+  level = VALUES(level),
+  exp = VALUES(exp),
   updated_at = VALUES(updated_at);
 
 -- 预置等级数据（开发用）。
-INSERT INTO user_level (user_id, level, exp, updated_at)
+INSERT INTO user_level (level, exp_required, updated_at)
 VALUES
-  (1001, 3, 120, NOW()),
-  (1002, 1, 10, NOW()),
-  (1003, 5, 520, NOW()),
-  (1004, 2, 60, NOW()),
-  (1005, 4, 260, NOW())
+  (1, 0, NOW()),
+  (2, 100, NOW()),
+  (3, 200, NOW()),
+  (4, 500, NOW()),
+  (5, 800, NOW())
 ON DUPLICATE KEY UPDATE
-  level = VALUES(level),
-  exp = VALUES(exp),
+  exp_required = VALUES(exp_required),
   updated_at = VALUES(updated_at);
 
 -- 预置积分余额（开发用）。

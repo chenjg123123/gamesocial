@@ -23,6 +23,7 @@
   - √ [GET /api/vip/status](#api-vip-status)
 - √ [Tournament 模块（小程序：赛事）](#module-tournament-app)
   - √ [GET /api/tournaments](#api-tournaments-list)
+  - √ [GET /api/tournaments/joined](#api-tournaments-joined)
   - √ [GET /api/tournaments/{id}](#api-tournaments-get)
   - √ [POST /api/tournaments/{id}/join](#api-tournaments-join)
   - √ [PUT /api/tournaments/{id}/cancel](#api-tournaments-cancel)
@@ -113,8 +114,8 @@ GET /health √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L129-L133)
-- Handler：[health.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/health.go#L1-L21)
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L129-L133)
+- Handler：[health.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/health.go#L1-L21)
 
 实现逻辑：
 
@@ -167,10 +168,10 @@ POST /api/auth/wechat/login √
 
 实现位置：
 
-- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go#L129-L142)
-- Handler：[wechat.go](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/wechat.go#L1-L57)
-- Middleware：解析 `Authorization: Bearer <token>` 写入 `X-User-Id`（[middleware.go](file:///w:/GOProject/gamesocial/GameSocial/api/middleware/middleware.go#L52-L83)）
-- Service：`auth.Service.OpenIDLogin`（[service.go](file:///w:/GOProject/gamesocial/GameSocial/modules/auth/service.go)）
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L129-L146)
+- Handler：[wechat.go](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/wechat.go#L1-L57)
+- Middleware：解析 `Authorization: Bearer <token>` 写入 `X-User-Id`（[middleware.go](file:///e:/VUE3/新建文件夹/GameSocial/api/middleware/middleware.go#L52-L83)）
+- Service：`auth.Service.OpenIDLogin`（[service.go](file:///e:/VUE3/新建文件夹/GameSocial/modules/auth/service.go)）
 
 实现逻辑：
 
@@ -257,18 +258,75 @@ GET /api/users/me √
 
 用途：获取当前登录用户的个人资料（昵称、头像等）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L133-L136)
+- Handler：[AppUserMeGet](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_users.go#L10-L41)
+- Service：[user.Get](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go#L55-L80)
+
 请求头：
 
 - `Authorization: Bearer <token>`
+
+成功响应 `data`：个人资料对象
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| nickname | string | 昵称（为空表示未设置） |
+| avatarUrl | string | 头像 URL（为空表示未设置） |
+
+请求示例：
+
+```bash
+curl -X GET "http://localhost:8080/api/users/me" \
+  -H "Authorization: Bearer <token>"
+```
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "nickname": "小明",
+    "avatarUrl": ""
+  },
+  "message": "ok"
+}
+```
 
 ### api-users-me-update
 PUT /api/users/me √
 
 用途：更新当前登录用户的个人资料（昵称、头像等）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L133-L136)
+- Handler：[AppUserMeUpdate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_users.go#L43-L87)
+- Service：[user.Update](file:///e:/VUE3/新建文件夹/GameSocial/modules/user/service.go#L134-L160)
+
 请求头：
 
 - `Authorization: Bearer <token>`
+
+请求体字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| nickname | string | 否 | 昵称（可为空字符串） |
+| avatarUrl | string | 否 | 头像 URL（可为空字符串） |
+
+请求示例：
+
+```bash
+curl -X PUT "http://localhost:8080/api/users/me" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d "{\"nickname\":\"9527\",\"avatarUrl\":\"\"}"
+```
+
+成功响应 `data`：个人资料对象（同 GET）
 
 ---
 
@@ -280,6 +338,11 @@ GET /api/points/balance √
 
 用途：获取当前登录用户的积分余额。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L143-L149)
+- Handler：[AppPointsBalance](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_points.go#L21-L57)
+
 请求头：
 
 - `Authorization: Bearer <token>`
@@ -288,6 +351,11 @@ GET /api/points/balance √
 GET /api/points/ledgers √
 
 用途：获取当前登录用户的积分流水列表。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L147-L149)
+- Handler：[AppPointsLedgers](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_points.go#L59-L121)
 
 请求头：
 
@@ -302,6 +370,11 @@ VIP 模块（小程序：会员订阅） √
 GET /api/vip/status √
 
 用途：获取当前登录用户的会员状态（是否会员、到期时间等）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L147-L150)
+- Handler：[AppVipStatus](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_vip.go#L9-L54)
 
 请求头：
 
@@ -321,15 +394,103 @@ GET /api/tournaments √
 
 用途：赛事列表。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L138-L143)
+- Handler：[AppTournamentsList](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_tournaments.go#L10-L39)
+- Service：[tournament.List](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L228-L280)
+
+### api-tournaments-joined
+GET /api/tournaments/joined √
+
+用途：查询当前登录用户已报名参加的赛事列表（按报名时间倒序）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L138-L143)
+- Handler：[AppTournamentsJoined](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_tournaments.go#L41-L78)
+- Service：[tournament.ListJoined](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L295-L357)
+
+请求：
+
+- Method：`GET`
+- Path：`/api/tournaments/joined`
+- Query：
+  - `offset`：默认 0
+  - `limit`：默认 20，最大 200
+  - `status`：可选，过滤赛事状态（例如 PUBLISHED/FINISHED）
+  - `q`：可选，按赛事标题模糊搜索
+
+响应 `data`：赛事列表（每项包含赛事字段 + 报名信息）
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | number | 赛事 ID |
+| title | string | 标题 |
+| content | string | 详情（可能为空） |
+| coverUrl | string | 封面 URL（可能为空） |
+| startAt | string | 开始时间（RFC3339） |
+| endAt | string | 结束时间（RFC3339） |
+| status | string | 赛事状态 |
+| createdByAdminId | number | 创建人管理员 ID |
+| createdAt | string | 创建时间（RFC3339） |
+| updatedAt | string | 更新时间（RFC3339） |
+| joinStatus | string | 报名状态（JOINED） |
+| joinedAt | string | 报名时间（RFC3339） |
+
+请求示例：
+
+```bash
+curl -X GET "http://localhost:8080/api/tournaments/joined?offset=0&limit=20&q=周末" \
+  -H "Authorization: Bearer <token>"
+```
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 4001,
+      "title": "周末友谊赛",
+      "content": "周末店内友谊赛，欢迎报名",
+      "coverUrl": "",
+      "startAt": "2026-02-01T06:00:00Z",
+      "endAt": "2026-02-01T10:00:00Z",
+      "status": "PUBLISHED",
+      "createdByAdminId": 1,
+      "createdAt": "2026-02-01T00:00:00Z",
+      "updatedAt": "2026-02-01T00:00:00Z",
+      "joinStatus": "JOINED",
+      "joinedAt": "2026-02-05T04:48:47Z"
+    }
+  ],
+  "message": "ok"
+}
+```
+
 ### api-tournaments-get
 GET /api/tournaments/{id} √
 
 用途：赛事详情。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L138-L143)
+- Handler：[AppTournamentsGet](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_tournaments.go#L80-L105)
+- Service：[tournament.Get](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L198-L227)
+
 ### api-tournaments-join
 POST /api/tournaments/{id}/join √
 
 用途：当前登录用户报名参加指定赛事。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L138-L143)
+- Handler：[AppTournamentsJoin](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_tournaments.go#L107-L138)
+- Service：[tournament.Join](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L281-L310)
 
 请求：
 
@@ -364,6 +525,12 @@ PUT /api/tournaments/{id}/cancel √
 
 用途：当前登录用户取消指定赛事的报名（幂等；重复取消仍返回成功）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L138-L143)
+- Handler：[AppTournamentsCancel](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_tournaments.go#L140-L171)
+- Service：[tournament.Cancel](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L311-L336)
+
 请求：
 
 - Method：`PUT`
@@ -396,6 +563,14 @@ curl -X PUT "http://localhost:8080/api/tournaments/4001/cancel" \
 GET /api/tournaments/{id}/results √
 
 用途：查看赛事排名/成绩列表；如携带登录态会额外返回当前用户名次。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L138-L143)
+- Handler：[AppTournamentsResults](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_tournaments.go#L173-L204)
+- Service：[tournament.GetResults](file:///e:/VUE3/新建文件夹/GameSocial/modules/tournament/service.go#L338-L415)
+
+说明：携带 `Authorization: Bearer <token>` 时，后端从 token 解析当前用户并返回 `my` 字段。
 
 请求：
 
@@ -465,15 +640,31 @@ GET /api/tasks √
 
 用途：查询任务列表（含当前周期进度与领奖状态）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L150-L152)
+- Handler：[AppTasksList](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_tasks.go#L10-L39)
+- Service：[task.ListTaskDef](file:///e:/VUE3/新建文件夹/GameSocial/modules/task/service.go#L218-L274)
+
 ### api-tasks-checkin
 POST /api/tasks/checkin ×
 
 用途：到店打卡（写入 checkin_log 并推动任务进度）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L150-L152)
+- Handler：[AppTasksCheckin](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_tasks.go#L41-L51)
+
 ### api-tasks-claim
 POST /api/tasks/{taskCode}/claim ×
 
 用途：领取任务奖励（需幂等，避免重复发奖）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L150-L152)
+- Handler：[AppTasksClaim](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_tasks.go#L53-L64)
 
 ---
 
@@ -485,10 +676,22 @@ GET /api/goods √
 
 用途：商品列表（用户侧展示）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L134-L138)
+- Handler：[AppGoodsList](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_goods.go#L10-L38)
+- Service：[item.ListGoods](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go#L197-L250)
+
 ### api-goods-get
 GET /api/goods/{id} √
 
 用途：商品详情（用户侧展示）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L136-L138)
+- Handler：[AppGoodsGet](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_goods.go#L40-L65)
+- Service：[item.GetGoods](file:///e:/VUE3/新建文件夹/GameSocial/modules/item/service.go#L168-L195)
 
 ---
 
@@ -504,17 +707,41 @@ POST /api/redeem/orders √
 
 用途：创建兑换订单（userId 从 token 获取；扣减积分并生成订单号）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L143-L146)
+- Handler：[AppRedeemOrderCreate](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_redeem.go#L11-L44)
+- Service：[redeem.CreateOrder](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L76-L146)
+
 ### api-redeem-orders-list
 GET /api/redeem/orders √
 
 用途：查询我的兑换订单列表。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L143-L146)
+- Handler：[AppRedeemOrderList](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_redeem.go#L46-L82)
+- Service：[redeem.ListOrders](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L212-L274)
 
 ### api-redeem-orders-get
 GET /api/redeem/orders/{id} √
 
 用途：查询我的兑换订单详情（含 items）。
 
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L143-L146)
+- Handler：[AppRedeemOrderGet](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_redeem.go#L84-L115)
+- Service：[redeem.GetOrder](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L148-L210)
+
 ### api-redeem-orders-cancel
 PUT /api/redeem/orders/{id}/cancel √
 
 用途：取消我的兑换订单（仅允许 CREATED -> CANCELED）。
+
+实现位置：
+
+- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L143-L146)
+- Handler：[AppRedeemOrderCancel](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_redeem.go#L117-L148)
+- Service：[redeem.CancelOrder](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L302-L336)

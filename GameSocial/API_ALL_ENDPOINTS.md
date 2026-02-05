@@ -1313,9 +1313,7 @@ PUT /admin/users/{id} √
 | avatarUrl | string | 否 | 头像 URL（可为空字符串） |
 | status | number | 否 | 1=正常，0=封禁 |
 
-注意：
-
-- 当前实现中，如果 `status` 解析为 0，会被后端默认写入 1（因此“封禁=0”在当前实现下不会生效）。
+注意：`status` 不传则不修改当前用户状态。
 
 请求示例：
 
@@ -1706,6 +1704,13 @@ GET /api/users/me √
 
 - `Authorization: Bearer <token>`
 
+成功响应 `data`：个人资料对象
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| nickname | string | 昵称（为空表示未设置） |
+| avatarUrl | string | 头像 URL（为空表示未设置） |
+
 ### api-users-me-update
 PUT /api/users/me √
 
@@ -1714,6 +1719,13 @@ PUT /api/users/me √
 请求头：
 
 - `Authorization: Bearer <token>`
+
+请求体字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| nickname | string | 否 | 昵称（可为空字符串） |
+| avatarUrl | string | 否 | 头像 URL（可为空字符串） |
 
 ---
 

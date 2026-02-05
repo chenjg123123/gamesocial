@@ -51,6 +51,27 @@ type ListTournamentRequest struct {
 	Status string `json:"status"`
 }
 
+// ListJoinedTournamentRequest 查询“我已报名赛事”列表的入参。
+// 说明：
+// - Status 用于按赛事状态过滤（如 PUBLISHED/FINISHED）；为空时默认排除 CANCELED
+// - Keyword 用于按赛事标题模糊搜索（LIKE %keyword%）
+// - Offset/Limit 用于分页
+type ListJoinedTournamentRequest struct {
+	Offset  int    `json:"offset"`
+	Limit   int    `json:"limit"`
+	Status  string `json:"status"`
+	Keyword string `json:"keyword"`
+}
+
+// JoinedTournament 是“我已报名赛事”列表的返回项。
+// 在 Tournament 基础字段上，额外携带报名信息（JoinStatus/JoinedAt）。
+type JoinedTournament struct {
+	Tournament
+	JoinStatus string    `json:"joinStatus"`
+	JoinedAt   time.Time `json:"joinedAt"`
+}
+
+// TournamentParticipant 对应 tournament_participant 表的数据结构。
 type TournamentParticipant struct {
 	ID           uint64    `json:"id"`
 	TournamentID uint64    `json:"tournamentId"`
@@ -59,6 +80,7 @@ type TournamentParticipant struct {
 	JoinedAt     time.Time `json:"joinedAt"`
 }
 
+// TournamentResultItem 是赛事成绩列表中的单条数据（排行榜项）。
 type TournamentResultItem struct {
 	UserID    uint64 `json:"userId"`
 	RankNo    int    `json:"rankNo"`
@@ -67,6 +89,7 @@ type TournamentResultItem struct {
 	AvatarURL string `json:"avatarUrl"`
 }
 
+// TournamentResults 是赛事成绩查询返回结构。
 type TournamentResults struct {
 	Items []TournamentResultItem `json:"items"`
 	My    *TournamentResultItem  `json:"my,omitempty"`
@@ -79,6 +102,7 @@ type Service interface {
 	Delete(ctx context.Context, id uint64) error
 	Get(ctx context.Context, id uint64) (Tournament, error)
 	List(ctx context.Context, req ListTournamentRequest) ([]Tournament, error)
+	ListJoined(ctx context.Context, userID uint64, req ListJoinedTournamentRequest) ([]JoinedTournament, error)
 	Join(ctx context.Context, tournamentID, userID uint64) error
 	Cancel(ctx context.Context, tournamentID, userID uint64) error
 	GetResults(ctx context.Context, tournamentID, userID uint64, offset, limit int) (TournamentResults, error)
@@ -278,6 +302,75 @@ func (s *service) List(ctx context.Context, req ListTournamentRequest) ([]Tourna
 	return out, nil
 }
 
+// ListJoined 查询指定用户已报名（JOINED）的赛事列表。
+// 排序：按报名时间 joined_at 倒序，其次按 participant.id 倒序。
+func (s *service) ListJoined(ctx context.Context, userID uint64, req ListJoinedTournamentRequest) ([]JoinedTournament, error) {
+	if s.db == nil {
+		return nil, errors.New("database disabled")
+	}
+	if userID == 0 {
+		return nil, errors.New("invalid user id")
+	}
+	if req.Limit <= 0 {
+		req.Limit = 20
+	}
+	if req.Limit > 200 {
+		req.Limit = 200
+	}
+	if req.Offset < 0 {
+		req.Offset = 0
+	}
+
+	// 仅返回当前用户仍处于 JOINED 的报名记录。
+	// 这里 join_status 的过滤放在 participant 上，status 的过滤放在 tournament 上。
+	where := "WHERE p.user_id = ? AND p.join_status = 'JOINED'"
+	args := make([]any, 0, 5)
+	args = append(args, userID)
+	if req.Status != "" {
+		where += " AND t.status = ?"
+		args = append(args, req.Status)
+	} else {
+		// 默认排除已取消的赛事，避免列表出现管理员删除/取消的内容。
+		where += " AND t.status <> 'CANCELED'"
+	}
+	if req.Keyword != "" {
+		where += " AND t.title LIKE ?"
+		args = append(args, "%"+req.Keyword+"%")
+	}
+	args = append(args, req.Limit, req.Offset)
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			t.id, t.title, IFNULL(t.content, ''), IFNULL(t.cover_url, ''), t.start_at, t.end_at, t.status, t.created_by_admin_id, t.created_at, t.updated_at,
+			p.join_status, p.joined_at
+		FROM tournament_participant p
+		INNER JOIN tournament t ON t.id = p.tournament_id
+		`+where+`
+		ORDER BY p.joined_at DESC, p.id DESC
+		LIMIT ? OFFSET ?
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]JoinedTournament, 0, req.Limit)
+	for rows.Next() {
+		var it JoinedTournament
+		if err := rows.Scan(
+			&it.ID, &it.Title, &it.Content, &it.CoverURL, &it.StartAt, &it.EndAt, &it.Status, &it.CreatedByAdmin, &it.CreatedAt, &it.UpdatedAt,
+			&it.JoinStatus, &it.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (s *service) Join(ctx context.Context, tournamentID, userID uint64) error {
 	if s.db == nil {
 		return errors.New("database disabled")
@@ -299,7 +392,18 @@ func (s *service) Join(ctx context.Context, tournamentID, userID uint64) error {
 	if !t.EndAt.IsZero() && time.Now().After(t.EndAt) {
 		return fmt.Errorf("tournament ended")
 	}
+	// 先检查用户是否已经参加当前赛事。
+	var count int
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM tournament_participant WHERE tournament_id = ? AND user_id = ? AND join_status <> 'CANCELED'
+	`, tournamentID, userID).Scan(&count); err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("请勿重复报名")
+	}
 
+	// 2) 插入或更新报名记录：join_status=JOINED。
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO tournament_participant (tournament_id, user_id, join_status, joined_at)
 		VALUES (?, ?, 'JOINED', NOW())

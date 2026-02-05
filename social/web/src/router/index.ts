@@ -11,10 +11,10 @@ import UserTournamentsPage from '../views/user/UserTournamentsPage.vue'
 import UserMePage from '../views/user/UserMePage.vue'
 import UserLoginPage from '../views/user/UserLoginPage.vue'
 
-export const ADMIN_PATH = '/gs-admin-9b7c3'
+export const ADMIN_PATH = '/gs-admin'
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/web/'), // 关键：base必须是/web/
   routes: [
     { path: '/', redirect: '/user/index' },
     { path: '/login', component: UserLoginPage },

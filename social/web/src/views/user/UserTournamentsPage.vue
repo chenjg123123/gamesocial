@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 
-import { cancelTournamentJoin, getTournament, getTournamentResults, joinTournament, listTournaments } from '../../api'
+import {
+  cancelTournamentJoin,
+  getTournament,
+  getTournamentResults,
+  joinTournament,
+  listJoinedTournaments,
+  listTournaments,
+} from '../../api'
 import { useToastStore } from '../../stores/toast'
 
 type TournamentItem = {
@@ -30,6 +37,11 @@ const toast = useToastStore()
 const loading = ref(false)
 const items = ref<TournamentItem[]>([])
 
+const joinedLoading = ref(false)
+const joinedMoreLoading = ref(false)
+const joined = ref<TournamentItem[]>([])
+const joinedHasMore = ref(false)
+
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref<TournamentItem | null>(null)
@@ -51,6 +63,32 @@ const refresh = async () => {
     toast.show((typeof err.message === 'string' && err.message) || '加载失败', 'error')
   } finally {
     loading.value = false
+  }
+}
+
+const refreshJoined = async (reset: boolean) => {
+  if (joinedLoading.value) return
+  if (!reset && (!joinedHasMore.value || joinedMoreLoading.value)) return
+
+  if (reset) joinedLoading.value = true
+  else joinedMoreLoading.value = true
+
+  try {
+    const offset = reset ? 0 : joined.value.length
+    const list = (await listJoinedTournaments(offset, 50)) as TournamentItem[]
+    joined.value = reset ? list : joined.value.concat(list)
+    joinedHasMore.value = list.length >= 50
+  } catch (e) {
+    const err = e as { message?: unknown }
+    if (err.message === 'unauthorized') {
+      joined.value = []
+      joinedHasMore.value = false
+      return
+    }
+    toast.show((typeof err.message === 'string' && err.message) || '加载参赛记录失败', 'error')
+  } finally {
+    if (reset) joinedLoading.value = false
+    else joinedMoreLoading.value = false
   }
 }
 
@@ -82,6 +120,7 @@ const join = async (id: number) => {
     await joinTournament(id)
     toast.show('报名成功', 'success')
     await refresh()
+    await refreshJoined(true)
     await refreshDetailIfOpen(id)
   } catch (e) {
     const err = e as { message?: unknown }
@@ -105,6 +144,7 @@ const cancelJoin = async (id: number) => {
     await cancelTournamentJoin(id)
     toast.show('已取消', 'success')
     await refresh()
+    await refreshJoined(true)
     await refreshDetailIfOpen(id)
   } catch (e) {
     const err = e as { message?: unknown }
@@ -187,20 +227,14 @@ const parseMs = (s?: unknown) => {
 const phaseOf = (it?: { status?: unknown; startAt?: unknown; endAt?: unknown } | null): Phase => {
   const st = statusUpper(it?.status)
   if (st === 'CANCELED') return 'CANCELED'
-  if (st === 'FINISHED') return 'FINISHED'
+  if (st === 'ENDED' || st === 'FINISHED') return 'FINISHED'
   if (st === 'DRAFT') return 'DRAFT'
+  if (st === 'PUBLISHED') return 'SIGNUP'
   if (st === 'RUNNING' || st === 'IN_PROGRESS' || st === 'ONGOING' || st === 'STARTED') return 'RUNNING'
 
   const startAtMs = parseMs(it?.startAt)
   const endAtMs = parseMs(it?.endAt)
   const hasWindow = Number.isFinite(startAtMs) && Number.isFinite(endAtMs)
-  if (st === 'PUBLISHED') {
-    if (!hasWindow) return 'SIGNUP'
-    const now = Date.now()
-    if (now < startAtMs) return 'SIGNUP'
-    if (now >= startAtMs && now < endAtMs) return 'RUNNING'
-    return 'FINISHED'
-  }
 
   if (hasWindow) {
     const now = Date.now()
@@ -223,8 +257,8 @@ const phaseLabel = (it?: { status?: unknown; startAt?: unknown; endAt?: unknown 
   return map[phaseOf(it)]
 }
 
-const canJoin = (it?: { status?: unknown; startAt?: unknown; endAt?: unknown } | null) => phaseOf(it) === 'SIGNUP'
-const canCancel = (it?: { status?: unknown; startAt?: unknown; endAt?: unknown } | null) => phaseOf(it) === 'SIGNUP'
+const canJoin = (it?: { status?: unknown } | null) => statusUpper(it?.status) === 'PUBLISHED'
+const canCancel = (it?: { status?: unknown } | null) => statusUpper(it?.status) === 'PUBLISHED'
 const canShowResults = (it?: { status?: unknown; startAt?: unknown; endAt?: unknown } | null) => phaseOf(it) === 'FINISHED'
 
 const formatDate = (s?: string) => {
@@ -234,6 +268,7 @@ const formatDate = (s?: string) => {
 
 onMounted(() => {
   void refresh()
+  void refreshJoined(true)
 })
 </script>
 
@@ -243,6 +278,38 @@ onMounted(() => {
       <div class="title">赛事</div>
       <div class="spacer" />
       <button class="btn btn--ghost" :disabled="loading" @click="refresh">刷新</button>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="title">参赛记录</div>
+        <div class="spacer" />
+        <button class="btn btn--ghost" :disabled="joinedLoading" @click="refreshJoined(true)">刷新</button>
+      </div>
+      <div v-if="joinedLoading" class="muted" style="margin-top: 10px">加载中…</div>
+      <div v-else class="grid" style="margin-top: 10px">
+        <div v-if="joined.length === 0" class="muted">暂无参赛记录</div>
+        <div v-for="it in joined" :key="String(it.id) + '-joined'" class="card card--flat">
+          <div class="row">
+            <div>
+              <div class="title">{{ it.title || `赛事#${it.id}` }}</div>
+              <div class="muted" style="margin-top: 6px">
+                {{ formatDate(it.startAt) }} ~ {{ formatDate(it.endAt) }} · 状态：{{ phaseLabel(it) }}
+              </div>
+            </div>
+            <div class="spacer" />
+            <button class="btn btn--ghost" :disabled="!it.id" @click="it.id && openDetail(it.id)">详情</button>
+          </div>
+        </div>
+        <button
+          v-if="joinedHasMore"
+          class="btn btn--ghost"
+          :disabled="joinedMoreLoading"
+          @click="refreshJoined(false)"
+        >
+          {{ joinedMoreLoading ? '加载中…' : '加载更多' }}
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="card muted">加载中…</div>

@@ -136,6 +136,7 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("GET /api/goods", handlers.AppGoodsList(app.ItemSvc))
 	mux.HandleFunc("GET /api/goods/{id}", handlers.AppGoodsGet(app.ItemSvc))
 	mux.HandleFunc("GET /api/tournaments", handlers.AppTournamentsList(app.TournamentSvc))
+	mux.HandleFunc("GET /api/tournaments/joined", handlers.AppTournamentsJoined(app.TournamentSvc))
 	mux.HandleFunc("GET /api/tournaments/{id}", handlers.AppTournamentsGet(app.TournamentSvc))
 	mux.HandleFunc("POST /api/tournaments/{id}/join", handlers.AppTournamentsJoin(app.TournamentSvc))
 	mux.HandleFunc("PUT /api/tournaments/{id}/cancel", handlers.AppTournamentsCancel(app.TournamentSvc))

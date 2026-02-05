@@ -6,26 +6,29 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 )
 
 // User 对应数据库 user 表的数据结构。
 type User struct {
-	ID        uint64    `json:"id"`
-	OpenID    string    `json:"openId"`
+	ID        uint64    `json:"id,omitempty"`
+	OpenID    string    `json:"openId,omitempty"`
 	UnionID   string    `json:"unionId,omitempty"`
 	Nickname  string    `json:"nickname,omitempty"`
 	AvatarURL string    `json:"avatarUrl,omitempty"`
-	Status    int       `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Status    int       `json:"status,omitempty"`
+	Level     int       `json:"level,omitempty"`
+	Exp       int64     `json:"exp,omitempty"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 }
 
 // UpdateUserRequest 更新用户资料入参（管理员侧可用）。
 type UpdateUserRequest struct {
 	Nickname  string `json:"nickname"`
 	AvatarURL string `json:"avatarUrl"`
-	Status    int    `json:"status"`
+	Status    *int   `json:"status"`
 }
 
 // ListUserRequest 用户列表入参。
@@ -63,22 +66,19 @@ func (s *service) Get(ctx context.Context, id uint64) (User, error) {
 
 	// 2) 读取单条记录：unionid/nickname/avatar_url 允许为空。
 	var u User
-	var unionID, nickname, avatar sql.NullString
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, openid, unionid, nickname, avatar_url, status, created_at, updated_at
+		SELECT IFNULL(nickname, ''), IFNULL(avatar_url, ''), level, exp, created_at
 		FROM user
 		WHERE id = ?
 		LIMIT 1
 	`, id)
-	if err := row.Scan(&u.ID, &u.OpenID, &unionID, &nickname, &avatar, &u.Status, &u.CreatedAt, &u.UpdatedAt); err != nil {
+	if err := row.Scan(&u.Nickname, &u.AvatarURL, &u.Level, &u.Exp, &u.CreatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return User{}, fmt.Errorf("user not found")
 		}
 		return User{}, err
 	}
-	u.UnionID = unionID.String
-	u.Nickname = nickname.String
-	u.AvatarURL = avatar.String
+	log.Printf("user.Get: %+v", u)
 	return u, nil
 }
 
@@ -109,7 +109,7 @@ func (s *service) List(ctx context.Context, req ListUserRequest) ([]User, error)
 
 	// 3) 查询列表：按 id 倒序，便于后台先看到最近用户。
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, openid, IFNULL(unionid, ''), IFNULL(nickname, ''), IFNULL(avatar_url, ''), status, created_at, updated_at
+		SELECT id, openid, IFNULL(unionid, ''), IFNULL(nickname, ''), IFNULL(avatar_url, ''), status, level, exp, created_at, updated_at
 		FROM user
 		`+where+`
 		ORDER BY id DESC
@@ -123,7 +123,7 @@ func (s *service) List(ctx context.Context, req ListUserRequest) ([]User, error)
 	out := make([]User, 0, req.Limit)
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.OpenID, &u.UnionID, &u.Nickname, &u.AvatarURL, &u.Status, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.OpenID, &u.UnionID, &u.Nickname, &u.AvatarURL, &u.Status, &u.Level, &u.Exp, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, u)
@@ -143,14 +143,10 @@ func (s *service) Update(ctx context.Context, id uint64, req UpdateUserRequest) 
 	if id == 0 {
 		return User{}, errors.New("invalid id")
 	}
-	if req.Status == 0 {
-		req.Status = 1
-	}
-
 	// 2) 更新用户资料：nickname/avatar_url 可为空；status 用于封禁/解封（例如 0=封禁，1=正常）。
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE user
-		SET nickname = NULLIF(?, ''), avatar_url = NULLIF(?, ''), status = ?, updated_at = NOW()
+		SET nickname = NULLIF(?, ''), avatar_url = NULLIF(?, ''), status = IFNULL(?, status), updated_at = NOW()
 		WHERE id = ?
 	`, req.Nickname, req.AvatarURL, req.Status, id)
 	if err != nil {

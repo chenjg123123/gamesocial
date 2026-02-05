@@ -25,6 +25,8 @@ const saving = ref(false)
 
 const nickname = ref('')
 const avatarUrl = ref('')
+
+const profileOpen = ref(false)
 const ledgerOpen = ref(false)
 const ledgerLoading = ref(false)
 const ledgerMoreLoading = ref(false)
@@ -32,6 +34,7 @@ const ledger = ref<LedgerItem[]>([])
 const ledgerHasMore = ref(false)
 
 const logout = () => {
+  if (!confirm('确定要退出登录吗？')) return
   auth.clear()
   nickname.value = ''
   avatarUrl.value = ''
@@ -68,6 +71,10 @@ const refresh = async () => {
   }
 }
 
+const openProfileEdit = () => {
+  profileOpen.value = true
+}
+
 const saveProfile = async () => {
   const nn = nickname.value.trim()
   const av = avatarUrl.value.trim()
@@ -77,6 +84,7 @@ const saveProfile = async () => {
     auth.setUser(profile)
     applyProfile(profile)
     toast.show('已保存', 'success')
+    profileOpen.value = false
   } catch (e) {
     const err = e as { message?: unknown }
     if (err.message === 'unauthorized') {
@@ -147,42 +155,81 @@ onMounted(() => {
 <template>
   <div class="grid">
     <div class="row">
-      <div class="title">我的</div>
+      <div class="title">个人中心</div>
       <div class="spacer" />
       <button class="btn btn--ghost" :disabled="loading" @click="refresh">刷新</button>
     </div>
 
-    <div class="card">
+    <!-- 用户基本信息 -->
+    <div class="card profile-card">
       <div class="row">
-        <div class="title">账号</div>
-        <div class="spacer" />
-        <button class="btn btn--ghost" @click="logout">退出登录</button>
-      </div>
-      <div class="help" style="margin-top: 6px">资料、积分流水、兑换记录都从这里进入。</div>
-      <div class="row" style="margin-top: 10px">
-        <button class="btn btn--ghost" @click="openLedger">积分流水</button>
-        <button class="btn btn--ghost" @click="goOrders">兑换记录</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="title">资料</div>
-      <div class="grid" style="margin-top: 10px">
-        <div class="row" style="align-items: flex-start">
-          <img
-            v-if="avatarUrl"
-            :src="avatarUrl"
-            alt="avatar"
-            class="avatar"
-          />
-          <div class="spacer" />
+        <img
+          v-if="avatarUrl"
+          :src="avatarUrl"
+          alt="avatar"
+          class="avatar avatar--lg"
+        />
+        <div v-else class="avatar avatar--lg placeholder-avatar">👤</div>
+        
+        <div class="profile-info">
+          <div class="nickname">{{ nickname || '未设置昵称' }}</div>
+          <div class="uid">UID: {{ auth.user?.id || '-' }}</div>
         </div>
-        <input v-model="nickname" class="input" placeholder="昵称" />
-        <input v-model="avatarUrl" class="input" placeholder="头像 URL" />
-        <button class="btn" :disabled="saving" @click="saveProfile">保存资料</button>
       </div>
     </div>
 
+    <!-- 菜单列表 -->
+    <div class="menu-list card">
+      <div class="menu-item" @click="openProfileEdit">
+        <div class="menu-icon">📝</div>
+        <div class="menu-label">编辑资料</div>
+        <div class="menu-arrow">›</div>
+      </div>
+      <div class="menu-divider" />
+      
+      <div class="menu-item" @click="openLedger">
+        <div class="menu-icon">💰</div>
+        <div class="menu-label">积分流水</div>
+        <div class="menu-arrow">›</div>
+      </div>
+      <div class="menu-divider" />
+      
+      <div class="menu-item" @click="goOrders">
+        <div class="menu-icon">📦</div>
+        <div class="menu-label">兑换记录</div>
+        <div class="menu-arrow">›</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 12px">
+       <div class="menu-item" style="color: var(--danger)" @click="logout">
+        <div class="menu-icon">🚪</div>
+        <div class="menu-label">退出登录</div>
+      </div>
+    </div>
+
+    <!-- 编辑资料弹窗 -->
+    <div v-if="profileOpen" class="modal" @click.self="profileOpen = false">
+      <div class="modal__panel card">
+        <div class="title">编辑资料</div>
+        <div class="grid" style="margin-top: 16px; gap: 12px">
+          <div class="form-item">
+            <label class="label">头像链接</label>
+            <input v-model="avatarUrl" class="input" placeholder="https://..." />
+          </div>
+          <div class="form-item">
+            <label class="label">昵称</label>
+            <input v-model="nickname" class="input" placeholder="请输入昵称" />
+          </div>
+          <div class="row" style="margin-top: 8px">
+            <button class="btn" :disabled="saving" @click="saveProfile">保存</button>
+            <button class="btn btn--ghost" @click="profileOpen = false">取消</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 积分流水弹窗 -->
     <div v-if="ledgerOpen" class="modal" @click.self="closeLedger">
       <div class="modal__panel card">
         <div class="row">
@@ -216,6 +263,20 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.avatar--lg { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
+.placeholder-avatar { display: grid; place-items: center; background: #eee; font-size: 24px; color: #aaa; }
+.profile-info { margin-left: 16px; display: flex; flex-direction: column; justify-content: center; }
+.nickname { font-size: 18px; font-weight: bold; }
+.uid { font-size: 13px; color: #888; margin-top: 4px; }
+
+.menu-list { padding: 0; overflow: hidden; }
+.menu-item { display: flex; align-items: center; padding: 16px; cursor: pointer; transition: background 0.2s; }
+.menu-item:active { background: #f5f5f5; }
+.menu-icon { font-size: 20px; width: 32px; text-align: center; margin-right: 12px; }
+.menu-label { flex: 1; font-size: 16px; }
+.menu-arrow { color: #ccc; font-size: 18px; }
+.menu-divider { height: 1px; background: #eee; margin: 0 16px; }
+
 .modal {
   position: fixed;
   inset: 0;
@@ -232,4 +293,6 @@ onMounted(() => {
   max-height: min(82vh, 720px);
   overflow: auto;
 }
+
+.label { font-size: 14px; font-weight: bold; margin-bottom: 4px; display: block; }
 </style>

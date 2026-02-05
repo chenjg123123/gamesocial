@@ -65,7 +65,7 @@ func AdminRedeemOrderGet(svc redeem.Service) http.HandlerFunc {
 		}
 
 		// 4) 读取订单详情（含 items）。
-		out, err := svc.GetOrder(r.Context(), id)
+		out, err := svc.GetOrder(r.Context(), id, 0)
 		if err != nil {
 			SendJBizFail(w, err.Error())
 			return
@@ -183,7 +183,7 @@ func AdminRedeemOrderCancel(svc redeem.Service) http.HandlerFunc {
 		}
 
 		// 4) 条件更新：只有 CREATED 能被取消。
-		out, err := svc.CancelOrder(r.Context(), id)
+		out, err := svc.CancelOrder(r.Context(), id, 0)
 		if err != nil {
 			SendJBizFail(w, err.Error())
 			return

@@ -74,6 +74,10 @@ export const request = async <T = unknown>(path: string, options?: RequestOption
     if (hasBizCode) {
       const code = Number(envelope.code)
       if (code === 200) return extractData(payload) as T
+      if (code === 1001) {
+        clearSession()
+        throw new Error('unauthorized')
+      }
       if (code === 401) {
         clearSession()
         throw new Error('unauthorized')
