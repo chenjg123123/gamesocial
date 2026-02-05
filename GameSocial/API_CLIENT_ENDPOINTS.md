@@ -774,6 +774,15 @@ POST /api/media/upload √
 - Handler：[AppMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L128-L153)
 - Store：[COSStore](file:///e:/VUE3/新建文件夹/GameSocial/internal/media/store.go#L33-L124)
 
+运行配置（环境变量）：
+
+- `MEDIA_COS_BUCKET_URL`：COS Bucket URL（必填），例如 `https://<bucket>.cos.<region>.myqcloud.com`
+- `MEDIA_COS_SECRET_ID`：腾讯云 SecretId（必填）
+- `MEDIA_COS_SECRET_KEY`：腾讯云 SecretKey（必填）
+- `MEDIA_COS_PUBLIC_BASE_URL`：对外访问的 BaseURL（可选；默认使用 bucket URL）
+- `MEDIA_COS_KEY_PREFIX`：对象 key 前缀（可选；默认 `uploads`）
+- `MEDIA_MAX_UPLOAD_MB`：单文件大小限制（可选；默认 10）
+
 请求：
 
 - Method：`POST`
