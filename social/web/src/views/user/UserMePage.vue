@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { apiMediaUpload, getMe, getPointsLedgers, updateMe } from '../../api'
+import { getMe, getPointsLedgers, updateMe } from '../../api'
 import { useAuthStore } from '../../stores/auth'
 import { useToastStore } from '../../stores/toast'
 
@@ -26,6 +26,8 @@ const saving = ref(false)
 const nickname = ref('')
 const avatarUrl = ref('')
 const avatarFileEl = ref<HTMLInputElement | null>(null)
+const pendingAvatarFile = ref<File | null>(null)
+const pendingAvatarPreviewUrl = ref('')
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
@@ -93,10 +95,20 @@ const refresh = async () => {
 }
 
 const openProfileEdit = () => {
+  pendingAvatarFile.value = null
+  if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
+  pendingAvatarPreviewUrl.value = ''
   profileOpen.value = true
 }
 
-const uploadAvatar = async (e: Event) => {
+const closeProfileEdit = () => {
+  profileOpen.value = false
+  pendingAvatarFile.value = null
+  if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
+  pendingAvatarPreviewUrl.value = ''
+}
+
+const pickAvatar = (e: Event) => {
   const file = pickFileFromChange(e)
   if (!file) return
   const msg = validateImageFile(file)
@@ -104,22 +116,10 @@ const uploadAvatar = async (e: Event) => {
     toast.show(msg, 'error')
     return
   }
-  saving.value = true
-  try {
-    const res = await apiMediaUpload(file)
-    const url = (res.url || res.path || '').trim()
-    if (!url) {
-      toast.show('上传失败', 'error')
-      return
-    }
-    avatarUrl.value = url
-    toast.show('头像已上传', 'success')
-  } catch (err) {
-    const e2 = err as { message?: unknown }
-    toast.show((typeof e2.message === 'string' && e2.message) || '上传失败', 'error')
-  } finally {
-    saving.value = false
-  }
+  pendingAvatarFile.value = file
+  if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
+  pendingAvatarPreviewUrl.value = URL.createObjectURL(file)
+  toast.show('已选择头像，保存时上传', 'success')
 }
 
 const saveProfile = async () => {
@@ -127,11 +127,11 @@ const saveProfile = async () => {
   const av = avatarUrl.value.trim()
   saving.value = true
   try {
-    const profile = await updateMe({ nickname: nn, avatarUrl: av })
+    const profile = await updateMe({ nickname: nn, avatarUrl: av, file: pendingAvatarFile.value })
     auth.setUser(profile)
     applyProfile(profile)
     toast.show('已保存', 'success')
-    profileOpen.value = false
+    closeProfileEdit()
   } catch (e) {
     const err = e as { message?: unknown }
     if (err.message === 'unauthorized') {
@@ -256,26 +256,27 @@ onMounted(() => {
     </div>
 
     <!-- 编辑资料弹窗 -->
-    <div v-if="profileOpen" class="modal" @click.self="profileOpen = false">
+    <div v-if="profileOpen" class="modal" @click.self="closeProfileEdit">
       <div class="modal__panel card">
         <div class="title">编辑资料</div>
         <div class="grid" style="margin-top: 16px; gap: 12px">
           <div class="form-item">
             <label class="label">头像</label>
             <div class="row">
-              <button class="btn btn--ghost" :disabled="saving" @click="triggerPick">上传头像</button>
+              <button class="btn btn--ghost" :disabled="saving" @click="triggerPick">选择头像</button>
               <input
                 ref="avatarFileEl"
                 style="display: none"
                 type="file"
                 accept="image/*"
-                @change="uploadAvatar"
+                @change="pickAvatar"
               />
-              <input v-model="avatarUrl" class="input" placeholder="上传后自动填充" readonly />
+              <input v-model="avatarUrl" class="input" placeholder="可粘贴头像 URL（或选择本地图片）" />
             </div>
+            <div v-if="pendingAvatarFile" class="help" style="margin-top: 6px">已选择：{{ pendingAvatarFile.name }}</div>
             <img
-              v-if="avatarUrl"
-              :src="avatarUrl"
+              v-if="pendingAvatarPreviewUrl || avatarUrl"
+              :src="pendingAvatarPreviewUrl || avatarUrl"
               alt="avatar"
               style="width: 80px; height: 80px; object-fit: cover; border-radius: 999px; margin-top: 10px"
             />
@@ -286,7 +287,7 @@ onMounted(() => {
           </div>
           <div class="row" style="margin-top: 8px">
             <button class="btn" :disabled="saving" @click="saveProfile">保存</button>
-            <button class="btn btn--ghost" @click="profileOpen = false">取消</button>
+            <button class="btn btn--ghost" @click="closeProfileEdit">取消</button>
           </div>
         </div>
       </div>

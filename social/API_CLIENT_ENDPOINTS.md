@@ -49,7 +49,7 @@
 
 ### 0.2 Content-Type
 
-- 请求：`Content-Type: application/json`
+- 请求：默认 `Content-Type: application/json`；涉及图片上传的接口会使用 `multipart/form-data`
 - 响应：`application/json; charset=utf-8`
 
 ### 0.3 时间格式
@@ -274,6 +274,9 @@ GET /api/users/me √
 |---|---|---|
 | nickname | string | 昵称（为空表示未设置） |
 | avatarUrl | string | 头像 URL（为空表示未设置） |
+| level | number | 用户等级（默认 1） |
+| exp | number | 经验值（累积） |
+| createdAt | string | 注册时间（RFC3339） |
 
 请求示例：
 
@@ -289,7 +292,10 @@ curl -X GET "http://localhost:8080/api/users/me" \
   "code": 200,
   "data": {
     "nickname": "小明",
-    "avatarUrl": ""
+    "avatarUrl": "",
+    "level": 1,
+    "exp": 0,
+    "createdAt": "2026-02-05T04:48:47Z"
   },
   "message": "ok"
 }
@@ -310,7 +316,9 @@ PUT /api/users/me √
 
 - `Authorization: Bearer <token>`
 
-请求体字段：
+请求体支持两种格式：
+
+1) `application/json`：仅更新文字字段（或直接传入已有的头像 URL）
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
@@ -324,6 +332,23 @@ curl -X PUT "http://localhost:8080/api/users/me" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d "{\"nickname\":\"9527\",\"avatarUrl\":\"\"}"
+```
+
+2) `multipart/form-data`：提交表单并在同一个请求里上传头像（仅当用户确认保存资料时才上传）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| nickname | string | 否 | 昵称（可为空字符串） |
+| avatarUrl | string | 否 | 头像 URL（可为空字符串；若同时传 file，以 file 上传结果为准） |
+| file | file | 否 | 头像图片文件（仅允许 `image/*`） |
+
+请求示例：
+
+```bash
+curl -X PUT "http://localhost:8080/api/users/me" \
+  -H "Authorization: Bearer <token>" \
+  -F "nickname=9527" \
+  -F "file=@./avatar.png"
 ```
 
 成功响应 `data`：个人资料对象（同 GET）

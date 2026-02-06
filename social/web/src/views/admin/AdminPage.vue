@@ -67,6 +67,14 @@ const goodsCoverFileEl = ref<HTMLInputElement | null>(null)
 const tournamentCoverFileEl = ref<HTMLInputElement | null>(null)
 const userAvatarFileEl = ref<HTMLInputElement | null>(null)
 
+const goodsCoverFile = ref<File | null>(null)
+const tournamentCoverFile = ref<File | null>(null)
+const userAvatarFile = ref<File | null>(null)
+
+const goodsCoverPreviewUrl = ref('')
+const tournamentCoverPreviewUrl = ref('')
+const userAvatarPreviewUrl = ref('')
+
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 const validateImageFile = (file: File) => {
@@ -88,33 +96,18 @@ const triggerPick = (el: HTMLInputElement | null) => {
 }
 
 const uploadImageAndGetUrl = async (file: File) => {
-  const res = await withLoading(async () => {
-    return await adminMediaUpload(file)
-  })
+  const res = await adminMediaUpload(file)
   const url = safeStr(res.url).trim()
   if (!url) throw new Error('上传失败')
   return url
 }
 
-const onPickGoodsCover = async (e: Event) => {
-  const file = pickFileFromChange(e)
-  if (!file) return
-  const msg = validateImageFile(file)
-  if (msg) {
-    toast.show(msg, 'error')
-    return
-  }
-  try {
-    const url = await uploadImageAndGetUrl(file)
-    goodsForm.value.coverUrl = url
-    toast.show('封面已上传', 'success')
-  } catch (err) {
-    const e2 = err as { message?: unknown }
-    toast.show((typeof e2.message === 'string' && e2.message) || '上传失败', 'error')
-  }
+const clearPreviewUrl = (url: string) => {
+  if (!url) return
+  URL.revokeObjectURL(url)
 }
 
-const onPickTournamentCover = async (e: Event) => {
+const onPickGoodsCover = (e: Event) => {
   const file = pickFileFromChange(e)
   if (!file) return
   const msg = validateImageFile(file)
@@ -122,17 +115,13 @@ const onPickTournamentCover = async (e: Event) => {
     toast.show(msg, 'error')
     return
   }
-  try {
-    const url = await uploadImageAndGetUrl(file)
-    tournamentForm.value.coverUrl = url
-    toast.show('封面已上传', 'success')
-  } catch (err) {
-    const e2 = err as { message?: unknown }
-    toast.show((typeof e2.message === 'string' && e2.message) || '上传失败', 'error')
-  }
+  goodsCoverFile.value = file
+  clearPreviewUrl(goodsCoverPreviewUrl.value)
+  goodsCoverPreviewUrl.value = URL.createObjectURL(file)
+  toast.show('已选择封面，提交时上传', 'success')
 }
 
-const onPickUserAvatar = async (e: Event) => {
+const onPickTournamentCover = (e: Event) => {
   const file = pickFileFromChange(e)
   if (!file) return
   const msg = validateImageFile(file)
@@ -140,14 +129,24 @@ const onPickUserAvatar = async (e: Event) => {
     toast.show(msg, 'error')
     return
   }
-  try {
-    const url = await uploadImageAndGetUrl(file)
-    userForm.value.avatarUrl = url
-    toast.show('头像已上传', 'success')
-  } catch (err) {
-    const e2 = err as { message?: unknown }
-    toast.show((typeof e2.message === 'string' && e2.message) || '上传失败', 'error')
+  tournamentCoverFile.value = file
+  clearPreviewUrl(tournamentCoverPreviewUrl.value)
+  tournamentCoverPreviewUrl.value = URL.createObjectURL(file)
+  toast.show('已选择封面，提交时上传', 'success')
+}
+
+const onPickUserAvatar = (e: Event) => {
+  const file = pickFileFromChange(e)
+  if (!file) return
+  const msg = validateImageFile(file)
+  if (msg) {
+    toast.show(msg, 'error')
+    return
   }
+  userAvatarFile.value = file
+  clearPreviewUrl(userAvatarPreviewUrl.value)
+  userAvatarPreviewUrl.value = URL.createObjectURL(file)
+  toast.show('已选择头像，提交时上传', 'success')
 }
 
 const title = computed(() => {
@@ -209,6 +208,9 @@ const editGoods = async (id: number) => {
         status: safeStr(item.status) || '1',
       }
     })
+    goodsCoverFile.value = null
+    clearPreviewUrl(goodsCoverPreviewUrl.value)
+    goodsCoverPreviewUrl.value = ''
   } catch (e) {
     const err = e as { message?: unknown }
     toast.show((typeof err.message === 'string' && err.message) || '加载失败', 'error')
@@ -217,24 +219,35 @@ const editGoods = async (id: number) => {
 
 const resetGoodsForm = () => {
   goodsForm.value = { id: '', name: '', coverUrl: '', pointsPrice: '', stock: '', status: '1' }
+  goodsCoverFile.value = null
+  clearPreviewUrl(goodsCoverPreviewUrl.value)
+  goodsCoverPreviewUrl.value = ''
 }
 
 const submitGoods = async () => {
   const form = goodsForm.value
-  const payload = {
-    name: String(form.name || '').trim(),
-    coverUrl: String(form.coverUrl || '').trim(),
-    pointsPrice: asNumber(form.pointsPrice),
-    stock: asNumber(form.stock),
-    status: asNumber(String(form.status || '1').trim() || '1'),
-  }
-  if (!payload.name) {
+  const name = String(form.name || '').trim()
+  if (!name) {
     toast.show('请输入商品名', 'error')
     return
   }
   const id = asNumber(form.id)
   try {
     await withLoading(async () => {
+      if (goodsCoverFile.value) {
+        const url = await uploadImageAndGetUrl(goodsCoverFile.value)
+        goodsForm.value.coverUrl = url
+        goodsCoverFile.value = null
+        clearPreviewUrl(goodsCoverPreviewUrl.value)
+        goodsCoverPreviewUrl.value = ''
+      }
+      const payload = {
+        name: String(goodsForm.value.name || '').trim(),
+        coverUrl: String(goodsForm.value.coverUrl || '').trim(),
+        pointsPrice: asNumber(goodsForm.value.pointsPrice),
+        stock: asNumber(goodsForm.value.stock),
+        status: asNumber(String(goodsForm.value.status || '1').trim() || '1'),
+      }
       await adminUpsertGoods(id || null, payload)
     })
     toast.show(id ? '已更新' : '已创建', 'success')
@@ -287,6 +300,9 @@ const editTournament = async (id: number) => {
         createdByAdminId: safeStr(item.createdByAdminId) || '1',
       }
     })
+    tournamentCoverFile.value = null
+    clearPreviewUrl(tournamentCoverPreviewUrl.value)
+    tournamentCoverPreviewUrl.value = ''
   } catch (e) {
     const err = e as { message?: unknown }
     toast.show((typeof err.message === 'string' && err.message) || '加载失败', 'error')
@@ -304,26 +320,37 @@ const resetTournamentForm = () => {
     status: 'DRAFT',
     createdByAdminId: '1',
   }
+  tournamentCoverFile.value = null
+  clearPreviewUrl(tournamentCoverPreviewUrl.value)
+  tournamentCoverPreviewUrl.value = ''
 }
 
 const submitTournament = async () => {
   const form = tournamentForm.value
-  const payload = {
-    title: String(form.title || '').trim(),
-    content: String(form.content || '').trim(),
-    coverUrl: String(form.coverUrl || '').trim(),
-    startAt: String(form.startAt || '').trim(),
-    endAt: String(form.endAt || '').trim(),
-    status: String(form.status || '').trim() || 'DRAFT',
-    createdByAdminId: asNumber(form.createdByAdminId) || 1,
-  }
-  if (!payload.title) {
+  const title = String(form.title || '').trim()
+  if (!title) {
     toast.show('请输入标题', 'error')
     return
   }
   const id = asNumber(form.id)
   try {
     await withLoading(async () => {
+      if (tournamentCoverFile.value) {
+        const url = await uploadImageAndGetUrl(tournamentCoverFile.value)
+        tournamentForm.value.coverUrl = url
+        tournamentCoverFile.value = null
+        clearPreviewUrl(tournamentCoverPreviewUrl.value)
+        tournamentCoverPreviewUrl.value = ''
+      }
+      const payload = {
+        title: String(tournamentForm.value.title || '').trim(),
+        content: String(tournamentForm.value.content || '').trim(),
+        coverUrl: String(tournamentForm.value.coverUrl || '').trim(),
+        startAt: String(tournamentForm.value.startAt || '').trim(),
+        endAt: String(tournamentForm.value.endAt || '').trim(),
+        status: String(tournamentForm.value.status || '').trim() || 'DRAFT',
+        createdByAdminId: asNumber(tournamentForm.value.createdByAdminId) || 1,
+      }
       await adminUpsertTournament(id || null, payload)
     })
     toast.show(id ? '已更新' : '已创建', 'success')
@@ -474,6 +501,9 @@ const editUser = async (id: number) => {
         status: safeStr(item.status) || '1',
       }
     })
+    userAvatarFile.value = null
+    clearPreviewUrl(userAvatarPreviewUrl.value)
+    userAvatarPreviewUrl.value = ''
   } catch (e) {
     const err = e as { message?: unknown }
     toast.show((typeof err.message === 'string' && err.message) || '加载失败', 'error')
@@ -482,6 +512,9 @@ const editUser = async (id: number) => {
 
 const resetUserForm = () => {
   userForm.value = { id: '', nickname: '', avatarUrl: '', status: '1' }
+  userAvatarFile.value = null
+  clearPreviewUrl(userAvatarPreviewUrl.value)
+  userAvatarPreviewUrl.value = ''
 }
 
 const submitUser = async () => {
@@ -491,13 +524,20 @@ const submitUser = async () => {
     toast.show('请选择用户', 'error')
     return
   }
-  const payload = {
-    nickname: String(form.nickname || '').trim(),
-    avatarUrl: String(form.avatarUrl || '').trim(),
-    status: asNumber(String(form.status || '1').trim() || '1'),
-  }
   try {
     await withLoading(async () => {
+      if (userAvatarFile.value) {
+        const url = await uploadImageAndGetUrl(userAvatarFile.value)
+        userForm.value.avatarUrl = url
+        userAvatarFile.value = null
+        clearPreviewUrl(userAvatarPreviewUrl.value)
+        userAvatarPreviewUrl.value = ''
+      }
+      const payload = {
+        nickname: String(userForm.value.nickname || '').trim(),
+        avatarUrl: String(userForm.value.avatarUrl || '').trim(),
+        status: asNumber(String(userForm.value.status || '1').trim() || '1'),
+      }
       await adminUpdateUser(id, payload)
     })
     toast.show('已更新', 'success')
@@ -629,7 +669,7 @@ onMounted(() => {
             <input v-model="goodsForm.name" class="input" placeholder="商品名" />
             <div class="row">
               <input v-model="goodsForm.coverUrl" class="input" placeholder="封面 URL" />
-              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(goodsCoverFileEl)">上传封面</button>
+              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(goodsCoverFileEl)">选择封面</button>
               <input
                 ref="goodsCoverFileEl"
                 style="display: none"
@@ -638,9 +678,10 @@ onMounted(() => {
                 @change="onPickGoodsCover"
               />
             </div>
+            <div v-if="goodsCoverFile" class="help">已选择：{{ goodsCoverFile.name }}</div>
             <img
-              v-if="goodsForm.coverUrl"
-              :src="goodsForm.coverUrl"
+              v-if="goodsCoverPreviewUrl || goodsForm.coverUrl"
+              :src="goodsCoverPreviewUrl || goodsForm.coverUrl"
               alt="cover"
               style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px"
             />
@@ -685,7 +726,7 @@ onMounted(() => {
             <div class="row">
               <input v-model="tournamentForm.coverUrl" class="input" placeholder="封面 URL" />
               <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(tournamentCoverFileEl)">
-                上传封面
+                选择封面
               </button>
               <input
                 ref="tournamentCoverFileEl"
@@ -695,9 +736,10 @@ onMounted(() => {
                 @change="onPickTournamentCover"
               />
             </div>
+            <div v-if="tournamentCoverFile" class="help">已选择：{{ tournamentCoverFile.name }}</div>
             <img
-              v-if="tournamentForm.coverUrl"
-              :src="tournamentForm.coverUrl"
+              v-if="tournamentCoverPreviewUrl || tournamentForm.coverUrl"
+              :src="tournamentCoverPreviewUrl || tournamentForm.coverUrl"
               alt="cover"
               style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px"
             />
@@ -784,7 +826,7 @@ onMounted(() => {
             <input v-model="userForm.nickname" class="input" placeholder="昵称" />
             <div class="row">
               <input v-model="userForm.avatarUrl" class="input" placeholder="头像 URL" />
-              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(userAvatarFileEl)">上传头像</button>
+              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(userAvatarFileEl)">选择头像</button>
               <input
                 ref="userAvatarFileEl"
                 style="display: none"
@@ -793,9 +835,10 @@ onMounted(() => {
                 @change="onPickUserAvatar"
               />
             </div>
+            <div v-if="userAvatarFile" class="help">已选择：{{ userAvatarFile.name }}</div>
             <img
-              v-if="userForm.avatarUrl"
-              :src="userForm.avatarUrl"
+              v-if="userAvatarPreviewUrl || userForm.avatarUrl"
+              :src="userAvatarPreviewUrl || userForm.avatarUrl"
               alt="avatar"
               style="width: 80px; height: 80px; object-fit: cover; border-radius: 999px"
             />

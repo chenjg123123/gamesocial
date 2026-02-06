@@ -48,8 +48,6 @@
   - × [PUT /admin/users/{id}/drinks/use](#api-admin-users-drinks-use)
   - × [POST /admin/tournaments/{id}/results/publish](#api-admin-tournament-results-publish)
   - × [POST /admin/tournaments/{id}/awards/grant](#api-admin-tournament-awards-grant)
-- × [Media 模块（媒体上传/访问）](#module-media)
-  - × [POST /admin/media/upload](#api-admin-media-upload)
 
 ## 0. 通用约定
 
@@ -1710,23 +1708,3 @@ POST /admin/tournaments/{id}/awards/grant ×
 1. 校验方法为 `POST`。
 2. 解析 path 参数 `id`（当前未做业务校验）。
 3. 当前为占位实现：直接返回 `granted=true`。
-
----
-
-## module-media
-Media 模块（媒体上传/访问） ×
-
-### api-admin-media-upload
-POST /admin/media/upload ×
-
-用途：上传封面/图片等媒体文件，返回可访问 URL。
-
-实现位置：
-
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L187-L196)
-- Handler：[AdminMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L100-L113)
-
-实现逻辑：
-
-1. 校验方法为 `POST`。
-2. 当前为占位实现：直接返回空 `url` 与 `createdAt`（RFC3339）。

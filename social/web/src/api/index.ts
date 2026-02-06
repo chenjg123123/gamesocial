@@ -22,8 +22,18 @@ export const getMe = async () => {
   return await request<AnyRecord>('/api/users/me')
 }
 
-export const updateMe = async (payload: { nickname: string; avatarUrl: string }) => {
-  return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: payload })
+export const updateMe = async (payload: { nickname: string; avatarUrl?: string; file?: File | null }) => {
+  const nn = String(payload.nickname || '').trim()
+  const av = String(payload.avatarUrl || '').trim()
+  const file = payload.file || null
+  if (file) {
+    const fd = new FormData()
+    fd.append('nickname', nn)
+    if (av) fd.append('avatarUrl', av)
+    fd.append('file', file)
+    return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: fd })
+  }
+  return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: { nickname: nn, avatarUrl: av } })
 }
 
 export const apiMediaUpload = async (file: File) => {
