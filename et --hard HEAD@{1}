@@ -1,0 +1,24 @@
+[33md45e1b4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: reset: moving to 1ce4e93^
+[33mb849d3b[m HEAD@{1}: rebase (finish): returning to refs/heads/main
+[33mb849d3b[m HEAD@{2}: rebase (pick): 0207-1
+[33me2e320d[m HEAD@{3}: commit (amend): 0207
+[33m1ce4e93[m HEAD@{4}: rebase: fast-forward
+[33md45e1b4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{5}: rebase (start): checkout 1ce4e93^
+[33m6649f92[m HEAD@{6}: commit (amend): 0207-1
+[33med7b718[m HEAD@{7}: commit (amend): 0207-1
+[33m43866de[m HEAD@{8}: commit: 0207-1
+[33m1ce4e93[m HEAD@{9}: commit: 0207
+[33md45e1b4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{10}: pull: Fast-forward
+[33mf7bf9d9[m HEAD@{11}: reset: moving to f7bf9d9
+[33m2082176[m HEAD@{12}: commit: 123
+[33ma06a9a5[m HEAD@{13}: reset: moving to a06a9a5
+[33ma06a9a5[m HEAD@{14}: commit: 0205-3
+[33mf7bf9d9[m HEAD@{15}: pull: Fast-forward
+[33m41791f8[m HEAD@{16}: commit: '0205'
+[33md5a0362[m HEAD@{17}: pull: Fast-forward
+[33m090109d[m HEAD@{18}: commit: 24
+[33m9790c04[m HEAD@{19}: reset: moving to origin/main
+[33m9d06afb[m HEAD@{20}: commit (merge): Merge branch 'main' of https://github.com/chenjg123123/gamesocial
+[33mfb92b69[m HEAD@{21}: commit: '123'
+[33m151ae23[m HEAD@{22}: commit: '增删改查'
+[33m60b0152[m HEAD@{23}: clone: from https://github.com/chenjg123123/gamesocial
