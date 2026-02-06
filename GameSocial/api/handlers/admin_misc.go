@@ -154,7 +154,7 @@ func AppMediaUpload(store media.Store, maxUploadBytes int64) http.HandlerFunc {
 
 func uploadImageToStore(r *http.Request, store media.Store, maxUploadBytes int64) (media.UploadResult, error) {
 	if store == nil {
-		return media.UploadResult{}, errors.New("media store not configured")
+		return media.UploadResult{}, errors.New("media store not configured: set MEDIA_COS_BUCKET_URL (COS bucket domain or CloudBase gateway domain) and restart server; if COS, also set MEDIA_COS_SECRET_ID/MEDIA_COS_SECRET_KEY")
 	}
 	if maxUploadBytes <= 0 {
 		maxUploadBytes = 10 * 1024 * 1024

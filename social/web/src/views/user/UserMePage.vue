@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { getMe, getPointsLedgers, updateMe } from '../../api'
+import { apiMediaUpload, getMe, getPointsLedgers, updateMe } from '../../api'
 import { useAuthStore } from '../../stores/auth'
 import { useToastStore } from '../../stores/toast'
 
@@ -25,6 +25,27 @@ const saving = ref(false)
 
 const nickname = ref('')
 const avatarUrl = ref('')
+const avatarFileEl = ref<HTMLInputElement | null>(null)
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+const validateImageFile = (file: File) => {
+  if (!file) return '请选择图片文件'
+  if (!file.type || !file.type.startsWith('image/')) return '仅支持 image/* 图片文件'
+  if (file.size > MAX_IMAGE_BYTES) return '图片大小不能超过 5MB'
+  return ''
+}
+
+const pickFileFromChange = (e: Event) => {
+  const input = e.target as HTMLInputElement | null
+  const f = input?.files && input.files.length > 0 ? input.files[0] : null
+  if (input) input.value = ''
+  return f
+}
+
+const triggerPick = () => {
+  avatarFileEl.value?.click()
+}
 
 const profileOpen = ref(false)
 const ledgerOpen = ref(false)
@@ -73,6 +94,32 @@ const refresh = async () => {
 
 const openProfileEdit = () => {
   profileOpen.value = true
+}
+
+const uploadAvatar = async (e: Event) => {
+  const file = pickFileFromChange(e)
+  if (!file) return
+  const msg = validateImageFile(file)
+  if (msg) {
+    toast.show(msg, 'error')
+    return
+  }
+  saving.value = true
+  try {
+    const res = await apiMediaUpload(file)
+    const url = (res.url || res.path || '').trim()
+    if (!url) {
+      toast.show('上传失败', 'error')
+      return
+    }
+    avatarUrl.value = url
+    toast.show('头像已上传', 'success')
+  } catch (err) {
+    const e2 = err as { message?: unknown }
+    toast.show((typeof e2.message === 'string' && e2.message) || '上传失败', 'error')
+  } finally {
+    saving.value = false
+  }
 }
 
 const saveProfile = async () => {
@@ -214,8 +261,24 @@ onMounted(() => {
         <div class="title">编辑资料</div>
         <div class="grid" style="margin-top: 16px; gap: 12px">
           <div class="form-item">
-            <label class="label">头像链接</label>
-            <input v-model="avatarUrl" class="input" placeholder="https://..." />
+            <label class="label">头像</label>
+            <div class="row">
+              <button class="btn btn--ghost" :disabled="saving" @click="triggerPick">上传头像</button>
+              <input
+                ref="avatarFileEl"
+                style="display: none"
+                type="file"
+                accept="image/*"
+                @change="uploadAvatar"
+              />
+              <input v-model="avatarUrl" class="input" placeholder="上传后自动填充" readonly />
+            </div>
+            <img
+              v-if="avatarUrl"
+              :src="avatarUrl"
+              alt="avatar"
+              style="width: 80px; height: 80px; object-fit: cover; border-radius: 999px; margin-top: 10px"
+            />
           </div>
           <div class="form-item">
             <label class="label">昵称</label>

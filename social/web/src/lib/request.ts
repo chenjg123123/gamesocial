@@ -35,14 +35,18 @@ export const request = async <T = unknown>(path: string, options?: RequestOption
   const timer = window.setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(opt.headers || {}) }
-    const token = getToken()
-    if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`
+    const isFormData = typeof FormData !== 'undefined' && opt.data instanceof FormData
+    const headers: Record<string, string> = { ...(opt.headers || {}) }
+    if (!isFormData && !headers['Content-Type']) headers['Content-Type'] = 'application/json'
+    const token = getToken().trim()
+    if (token && !headers.Authorization) {
+      headers.Authorization = /^bearer\s+/i.test(token) ? token : `Bearer ${token}`
+    }
 
     const res = await fetch(`${BASE_URL}${path}`, {
       method: opt.method || 'GET',
       headers,
-      body: opt.data === undefined ? undefined : JSON.stringify(opt.data),
+      body: opt.data === undefined ? undefined : isFormData ? (opt.data as FormData) : JSON.stringify(opt.data),
       signal: controller.signal,
       credentials: 'include',
     })

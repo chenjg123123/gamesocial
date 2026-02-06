@@ -26,6 +26,29 @@ export const updateMe = async (payload: { nickname: string; avatarUrl: string })
   return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: payload })
 }
 
+export const apiMediaUpload = async (file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    const res = await request<AnyRecord>('/api/media/upload', { method: 'POST', data: fd })
+    const url = typeof res.url === 'string' ? res.url : typeof res.path === 'string' ? res.path : ''
+    const path = typeof res.path === 'string' ? res.path : ''
+    const createdAt = typeof res.createdAt === 'string' ? res.createdAt : ''
+    return { url, path, createdAt }
+  } catch (e) {
+    const err = e as { message?: unknown }
+    const msg = typeof err.message === 'string' ? err.message : ''
+    if (msg.startsWith('HTTP 404')) {
+      const res = await request<AnyRecord>('/admin/media/upload', { method: 'POST', data: fd })
+      const url = typeof res.url === 'string' ? res.url : typeof res.path === 'string' ? res.path : ''
+      const path = typeof res.path === 'string' ? res.path : ''
+      const createdAt = typeof res.createdAt === 'string' ? res.createdAt : ''
+      return { url, path, createdAt }
+    }
+    throw e
+  }
+}
+
 export const getVipStatus = async () => {
   return await request<AnyRecord>('/api/vip/status')
 }
@@ -200,4 +223,14 @@ export const adminCreateRedeemOrder = async (items: Array<{ goodsId: number; qua
 export const adminListAuditLogs = async (offset = 0, limit = 50) => {
   const res = await request<unknown>(`/admin/audit/logs?offset=${offset}&limit=${limit}`)
   return listFrom<AnyRecord>(res)
+}
+
+export const adminMediaUpload = async (file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await request<AnyRecord>('/admin/media/upload', { method: 'POST', data: fd })
+  const url = typeof res.url === 'string' ? res.url : ''
+  const key = typeof res.key === 'string' ? res.key : ''
+  const createdAt = typeof res.createdAt === 'string' ? res.createdAt : ''
+  return { url, key, createdAt }
 }

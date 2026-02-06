@@ -1,6 +1,6 @@
 # 构建阶段：使用 Go 1.22-alpine，匹配 go.mod 版本要求
 FROM golang:1.22-alpine AS builder
-
+#scp -r ./ root@47.107.174.153:/root/app/
 WORKDIR /app
 
 COPY go.mod go.sum ./

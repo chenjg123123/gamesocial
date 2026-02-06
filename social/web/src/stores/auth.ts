@@ -22,8 +22,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const setToken = (t: string) => {
-    token.value = t
-    persistToken(t)
+    const normalized = String(t || '')
+      .trim()
+      .replace(/^bearer\s+/i, '')
+    token.value = normalized
+    persistToken(normalized)
   }
 
   const clear = () => {

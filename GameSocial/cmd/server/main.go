@@ -93,12 +93,15 @@ func main() {
 
 	app.MediaMaxUploadBytes = cfg.MediaMaxUploadMB * 1024 * 1024
 	if cfg.MediaCOSBucketURL != "" {
-		store, err := media.NewCOSStore(
+		store, err := media.NewStore(
 			cfg.MediaCOSBucketURL,
 			cfg.MediaCOSSecretID,
 			cfg.MediaCOSSecretKey,
 			cfg.MediaCOSPublicBaseURL,
 			cfg.MediaCOSKeyPathPrefix,
+			cfg.MediaCloudBaseTokenType,
+			cfg.MediaCloudBaseAccessToken,
+			cfg.MediaCloudBaseDeviceID,
 		)
 		if err != nil {
 			log.Fatalf("init media store: %v", err)

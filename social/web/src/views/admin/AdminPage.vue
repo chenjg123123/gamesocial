@@ -17,6 +17,7 @@ import {
   adminListTournaments,
   adminListUsers,
   adminListAuditLogs,
+  adminMediaUpload,
   adminUpdateUser,
   adminUpsertGoods,
   adminUpsertTaskDef,
@@ -61,6 +62,93 @@ const taskDefForm = ref({
 })
 const userForm = ref({ id: '', nickname: '', avatarUrl: '', status: '1' })
 const orderForm = ref({ goodsId: '', quantity: '1', pointsPrice: '' })
+
+const goodsCoverFileEl = ref<HTMLInputElement | null>(null)
+const tournamentCoverFileEl = ref<HTMLInputElement | null>(null)
+const userAvatarFileEl = ref<HTMLInputElement | null>(null)
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+const validateImageFile = (file: File) => {
+  if (!file) return '请选择图片文件'
+  if (!file.type || !file.type.startsWith('image/')) return '仅支持 image/* 图片文件'
+  if (file.size > MAX_IMAGE_BYTES) return '图片大小不能超过 5MB'
+  return ''
+}
+
+const pickFileFromChange = (e: Event) => {
+  const input = e.target as HTMLInputElement | null
+  const f = input?.files && input.files.length > 0 ? input.files[0] : null
+  if (input) input.value = ''
+  return f
+}
+
+const triggerPick = (el: HTMLInputElement | null) => {
+  el?.click()
+}
+
+const uploadImageAndGetUrl = async (file: File) => {
+  const res = await withLoading(async () => {
+    return await adminMediaUpload(file)
+  })
+  const url = safeStr(res.url).trim()
+  if (!url) throw new Error('上传失败')
+  return url
+}
+
+const onPickGoodsCover = async (e: Event) => {
+  const file = pickFileFromChange(e)
+  if (!file) return
+  const msg = validateImageFile(file)
+  if (msg) {
+    toast.show(msg, 'error')
+    return
+  }
+  try {
+    const url = await uploadImageAndGetUrl(file)
+    goodsForm.value.coverUrl = url
+    toast.show('封面已上传', 'success')
+  } catch (err) {
+    const e2 = err as { message?: unknown }
+    toast.show((typeof e2.message === 'string' && e2.message) || '上传失败', 'error')
+  }
+}
+
+const onPickTournamentCover = async (e: Event) => {
+  const file = pickFileFromChange(e)
+  if (!file) return
+  const msg = validateImageFile(file)
+  if (msg) {
+    toast.show(msg, 'error')
+    return
+  }
+  try {
+    const url = await uploadImageAndGetUrl(file)
+    tournamentForm.value.coverUrl = url
+    toast.show('封面已上传', 'success')
+  } catch (err) {
+    const e2 = err as { message?: unknown }
+    toast.show((typeof e2.message === 'string' && e2.message) || '上传失败', 'error')
+  }
+}
+
+const onPickUserAvatar = async (e: Event) => {
+  const file = pickFileFromChange(e)
+  if (!file) return
+  const msg = validateImageFile(file)
+  if (msg) {
+    toast.show(msg, 'error')
+    return
+  }
+  try {
+    const url = await uploadImageAndGetUrl(file)
+    userForm.value.avatarUrl = url
+    toast.show('头像已上传', 'success')
+  } catch (err) {
+    const e2 = err as { message?: unknown }
+    toast.show((typeof e2.message === 'string' && e2.message) || '上传失败', 'error')
+  }
+}
 
 const title = computed(() => {
   if (tab.value === 'goods') return '商品管理'
@@ -539,7 +627,23 @@ onMounted(() => {
           <div class="title">新增/编辑</div>
           <div class="grid" style="margin-top: 10px">
             <input v-model="goodsForm.name" class="input" placeholder="商品名" />
-            <input v-model="goodsForm.coverUrl" class="input" placeholder="封面 URL" />
+            <div class="row">
+              <input v-model="goodsForm.coverUrl" class="input" placeholder="封面 URL" />
+              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(goodsCoverFileEl)">上传封面</button>
+              <input
+                ref="goodsCoverFileEl"
+                style="display: none"
+                type="file"
+                accept="image/*"
+                @change="onPickGoodsCover"
+              />
+            </div>
+            <img
+              v-if="goodsForm.coverUrl"
+              :src="goodsForm.coverUrl"
+              alt="cover"
+              style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px"
+            />
             <div class="row">
               <input v-model="goodsForm.pointsPrice" class="input" placeholder="积分价格" />
               <input v-model="goodsForm.stock" class="input" placeholder="库存" />
@@ -578,7 +682,25 @@ onMounted(() => {
           <div class="title">新增/编辑</div>
           <div class="grid" style="margin-top: 10px">
             <input v-model="tournamentForm.title" class="input" placeholder="标题" />
-            <input v-model="tournamentForm.coverUrl" class="input" placeholder="封面 URL" />
+            <div class="row">
+              <input v-model="tournamentForm.coverUrl" class="input" placeholder="封面 URL" />
+              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(tournamentCoverFileEl)">
+                上传封面
+              </button>
+              <input
+                ref="tournamentCoverFileEl"
+                style="display: none"
+                type="file"
+                accept="image/*"
+                @change="onPickTournamentCover"
+              />
+            </div>
+            <img
+              v-if="tournamentForm.coverUrl"
+              :src="tournamentForm.coverUrl"
+              alt="cover"
+              style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px"
+            />
             <div class="row">
               <input v-model="tournamentForm.startAt" class="input" placeholder="startAt(RFC3339)" />
               <input v-model="tournamentForm.endAt" class="input" placeholder="endAt(RFC3339)" />
@@ -660,7 +782,23 @@ onMounted(() => {
           <div class="grid" style="margin-top: 10px">
             <div class="muted">当前用户 id：{{ userForm.id || '-' }}</div>
             <input v-model="userForm.nickname" class="input" placeholder="昵称" />
-            <input v-model="userForm.avatarUrl" class="input" placeholder="头像 URL" />
+            <div class="row">
+              <input v-model="userForm.avatarUrl" class="input" placeholder="头像 URL" />
+              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(userAvatarFileEl)">上传头像</button>
+              <input
+                ref="userAvatarFileEl"
+                style="display: none"
+                type="file"
+                accept="image/*"
+                @change="onPickUserAvatar"
+              />
+            </div>
+            <img
+              v-if="userForm.avatarUrl"
+              :src="userForm.avatarUrl"
+              alt="avatar"
+              style="width: 80px; height: 80px; object-fit: cover; border-radius: 999px"
+            />
             <input v-model="userForm.status" class="input" placeholder="status(1/0)" />
             <div class="row">
               <button class="btn" :disabled="loading" @click="submitUser">保存</button>
