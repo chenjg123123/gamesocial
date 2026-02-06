@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"gamesocial/internal/media"
 )
@@ -99,56 +98,6 @@ func AdminTournamentAwardsGrant() http.HandlerFunc {
 		}
 		_ = parseUint64(r.PathValue("id"))
 		SendJSuccess(w, map[string]any{"granted": true})
-	}
-}
-
-// AdminMediaUpload 上传媒体文件并返回可访问 URL。
-// POST /admin/media/upload
-// 请求格式：multipart/form-data；文件字段名为 file。
-func AdminMediaUpload(store media.Store, maxUploadBytes int64) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			SendJError(w, http.StatusMethodNotAllowed, CodeBizNotDone, "method not allowed")
-			return
-		}
-
-		out, err := uploadImageToStore(r, store, maxUploadBytes)
-		if err != nil {
-			SendJBizFail(w, err.Error())
-			return
-		}
-		SendJSuccess(w, map[string]any{
-			"url":       out.URL,
-			"key":       out.Key,
-			"createdAt": time.Now().Format(time.RFC3339),
-		})
-	}
-}
-
-// AppMediaUpload 小程序侧图片上传接口：将图片上传到媒体存储（腾讯云 COS），返回可访问 URL。
-// POST /api/media/upload
-// 请求格式：multipart/form-data；文件字段名为 file。
-func AppMediaUpload(store media.Store, maxUploadBytes int64) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			SendJError(w, http.StatusMethodNotAllowed, CodeBizNotDone, "method not allowed")
-			return
-		}
-		if userIDFromRequest(r) == 0 {
-			SendJError(w, http.StatusUnauthorized, CodeUnauthorized, "")
-			return
-		}
-
-		out, err := uploadImageToStore(r, store, maxUploadBytes)
-		if err != nil {
-			SendJBizFail(w, err.Error())
-			return
-		}
-		SendJSuccess(w, map[string]any{
-			"url":       out.URL,
-			"key":       out.Key,
-			"createdAt": time.Now().Format(time.RFC3339),
-		})
 	}
 }
 

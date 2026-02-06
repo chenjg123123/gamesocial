@@ -24,6 +24,15 @@ func AppTournamentsList(svc tournament.Service) http.HandlerFunc {
 		offset, _ := strconv.Atoi(q.Get("offset"))
 		limit, _ := strconv.Atoi(q.Get("limit"))
 		status := q.Get("status")
+		if limit <= 0 {
+			limit = 20
+		}
+		if limit > 200 {
+			limit = 200
+		}
+		if offset < 0 {
+			offset = 0
+		}
 
 		out, err := svc.List(r.Context(), tournament.ListTournamentRequest{
 			Offset: offset,
@@ -68,6 +77,15 @@ func AppTournamentsJoined(svc tournament.Service) http.HandlerFunc {
 		limit, _ := strconv.Atoi(q.Get("limit"))
 		status := q.Get("status")
 		keyword := q.Get("q")
+		if limit <= 0 {
+			limit = 20
+		}
+		if limit > 200 {
+			limit = 200
+		}
+		if offset < 0 {
+			offset = 0
+		}
 
 		out, err := svc.ListJoined(r.Context(), uid, tournament.ListJoinedTournamentRequest{
 			Offset:  offset,
@@ -198,6 +216,15 @@ func AppTournamentsResults(svc tournament.Service) http.HandlerFunc {
 		q := r.URL.Query()
 		offset, _ := strconv.Atoi(q.Get("offset"))
 		limit, _ := strconv.Atoi(q.Get("limit"))
+		if limit <= 0 {
+			limit = 20
+		}
+		if limit > 200 {
+			limit = 200
+		}
+		if offset < 0 {
+			offset = 0
+		}
 
 		uid := userIDFromRequest(r)
 		out, err := svc.GetResults(r.Context(), id, uid, offset, limit)

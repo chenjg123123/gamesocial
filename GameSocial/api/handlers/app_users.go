@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 	"time"
 
+	"gamesocial/internal/media"
 	"gamesocial/modules/user"
 )
 
@@ -49,7 +52,7 @@ func AppUserMeGet(svc user.Service) http.HandlerFunc {
 
 // AppUserMeUpdate 更新当前用户资料。
 // PUT /api/users/me
-func AppUserMeUpdate(svc user.Service) http.HandlerFunc {
+func AppUserMeUpdate(svc user.Service, store media.Store, maxUploadBytes int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
 			SendJError(w, http.StatusMethodNotAllowed, CodeBizNotDone, "method not allowed")
@@ -66,18 +69,50 @@ func AppUserMeUpdate(svc user.Service) http.HandlerFunc {
 			return
 		}
 
-		var req struct {
-			Nickname  string `json:"nickname"`
-			AvatarURL string `json:"avatarUrl"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			SendJBizFail(w, "参数格式错误")
-			return
+		var nickname *string
+		var avatarURL *string
+
+		ct := strings.TrimSpace(r.Header.Get("Content-Type"))
+		if strings.HasPrefix(strings.ToLower(ct), "multipart/form-data") {
+			if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			if r.MultipartForm != nil {
+				if vals, ok := r.MultipartForm.Value["nickname"]; ok && len(vals) != 0 {
+					v := vals[0]
+					nickname = &v
+				}
+			}
+
+			f, _, err := r.FormFile("file")
+			if err == nil {
+				_ = f.Close()
+				out, err := uploadImageToStore(r, store, maxUploadBytes)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				v := out.URL
+				avatarURL = &v
+			} else if !errors.Is(err, http.ErrMissingFile) {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+		} else {
+			var req struct {
+				Nickname *string `json:"nickname"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			nickname = req.Nickname
 		}
 
 		out, err := svc.Update(r.Context(), uid, user.UpdateUserRequest{
-			Nickname:  req.Nickname,
-			AvatarURL: req.AvatarURL,
+			Nickname:  nickname,
+			AvatarURL: avatarURL,
 		})
 		if err != nil {
 			SendJBizFail(w, err.Error())

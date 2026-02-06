@@ -71,7 +71,6 @@
 | × | Admin（管理员） | PUT | /admin/users/{id}/drinks/use | [PUT /admin/users/{id}/drinks/use](API_ADMIN_ENDPOINTS.md#api-admin-users-drinks-use) |
 | × | Admin（管理员） | POST | /admin/tournaments/{id}/results/publish | [POST /admin/tournaments/{id}/results/publish](API_ADMIN_ENDPOINTS.md#api-admin-tournament-results-publish) |
 | × | Admin（管理员） | POST | /admin/tournaments/{id}/awards/grant | [POST /admin/tournaments/{id}/awards/grant](API_ADMIN_ENDPOINTS.md#api-admin-tournament-awards-grant) |
-| × | Media（管理员） | POST | /admin/media/upload | [POST /admin/media/upload](API_ADMIN_ENDPOINTS.md#api-admin-media-upload) |
 
 ## 详细说明
 
@@ -1720,12 +1719,20 @@ PUT /api/users/me √
 
 - `Authorization: Bearer <token>`
 
-请求体字段：
+请求体支持两种格式：
+
+1) `application/json`：仅更新文字字段
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
 | nickname | string | 否 | 昵称（可为空字符串） |
-| avatarUrl | string | 否 | 头像 URL（可为空字符串） |
+
+2) `multipart/form-data`：提交表单并在同一个请求里上传头像（仅当用户确认保存资料时才上传；头像 URL 由服务端根据上传结果写入）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| nickname | string | 否 | 昵称（可为空字符串） |
+| file | file | 否 | 头像图片文件（仅允许 `image/*`） |
 
 ---
 
@@ -2109,51 +2116,8 @@ POST /admin/tournaments/{id}/awards/grant ×
 
 ---
 
-## module-media
-Media 模块（媒体上传/访问） √
-
-### api-media-upload
-POST /api/media/upload √
-
-用途：小程序端上传图片到腾讯云 COS，返回可访问 URL（不落本地磁盘）。
-
-实现位置：
-
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L150-L176)
-- Handler：[AppMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L128-L153)
-- Store：[COSStore](file:///e:/VUE3/新建文件夹/GameSocial/internal/media/store.go#L33-L124)
-
-实现逻辑：
-
-1. 校验方法为 `POST`，并校验登录态（从 token 解析 userId）。
-2. 解析 multipart 表单中的 `file` 文件字段。
-3. 校验文件类型为 `image/*`，并按配置限制文件大小。
-4. 上传到腾讯云 COS，返回 `url/key/createdAt`。
-
----
-
-### api-admin-media-upload
-POST /admin/media/upload √
-
-用途：上传封面/图片等媒体文件，返回可访问 URL。
-
-实现位置：
-
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L210-L219)
-- Handler：[AdminMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L105-L126)
-- Store：[COSStore](file:///e:/VUE3/新建文件夹/GameSocial/internal/media/store.go#L33-L124)
-
-实现逻辑：
-
-1. 校验方法为 `POST`。
-2. 解析 multipart 表单中的 `file` 文件字段。
-3. 校验文件类型为 `image/*`，并按配置限制文件大小。
-4. 上传到腾讯云 COS，返回 `url/key/createdAt`。
-
----
-
 ## module-unimplemented
 小程序侧接口汇总（部分未完成） ×
 
-本段用于保留一个“规划接口”总入口；具体接口已拆分到上面的模块段落（User/Points/VIP/Tournament/Task/Item/Redeem/Admin/Media）。
+本段用于保留一个“规划接口”总入口；具体接口已拆分到上面的模块段落（User/Points/VIP/Tournament/Task/Item/Redeem/Admin）。
 

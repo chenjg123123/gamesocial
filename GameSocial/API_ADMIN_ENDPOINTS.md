@@ -48,8 +48,6 @@
   - × [PUT /admin/users/{id}/drinks/use](#api-admin-users-drinks-use)
   - × [POST /admin/tournaments/{id}/results/publish](#api-admin-tournament-results-publish)
   - × [POST /admin/tournaments/{id}/awards/grant](#api-admin-tournament-awards-grant)
-- × [Media 模块（媒体上传/访问）](#module-media)
-  - √ [POST /admin/media/upload](#api-admin-media-upload)
 
 ## 0. 通用约定
 
@@ -1710,51 +1708,3 @@ POST /admin/tournaments/{id}/awards/grant ×
 1. 校验方法为 `POST`。
 2. 解析 path 参数 `id`（当前未做业务校验）。
 3. 当前为占位实现：直接返回 `granted=true`。
-
----
-
-## module-media
-Media 模块（媒体上传/访问） √
-
-### api-admin-media-upload
-POST /admin/media/upload √
-
-用途：上传封面/图片等媒体文件，返回可访问 URL。
-
-实现位置：
-
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L210-L219)
-- Handler：[AdminMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L105-L126)
-- Store：[COSStore](file:///e:/VUE3/新建文件夹/GameSocial/internal/media/store.go#L33-L124)
-
-运行配置（环境变量）：
-
-- `MEDIA_COS_BUCKET_URL`：COS Bucket URL（必填），例如 `https://<bucket>.cos.<region>.myqcloud.com`
-- `MEDIA_COS_SECRET_ID`：腾讯云 SecretId（必填）
-- `MEDIA_COS_SECRET_KEY`：腾讯云 SecretKey（必填）
-- `MEDIA_COS_PUBLIC_BASE_URL`：对外访问的 BaseURL（可选；默认使用 bucket URL）
-- `MEDIA_COS_KEY_PREFIX`：对象 key 前缀（可选；默认 `uploads`）
-- `MEDIA_MAX_UPLOAD_MB`：单文件大小限制（可选；默认 10）
-
-实现逻辑：
-
-1. 校验方法为 `POST`。
-2. 解析 multipart 表单中的 `file` 文件字段。
-3. 校验文件类型为 `image/*`，并按配置限制文件大小。
-4. 上传到腾讯云 COS，返回 `url/key/createdAt`。
-
-请求：
-
-- Method：`POST`
-- Path：`/admin/media/upload`
-- Content-Type：`multipart/form-data`
-- Form：
-  - `file`：图片文件（必须；仅允许 `image/*`）
-
-成功响应 `data`：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| url | string | 可访问 URL |
-| key | string | COS 对象 key |
-| createdAt | string | 创建时间（RFC3339） |

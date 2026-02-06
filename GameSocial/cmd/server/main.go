@@ -156,7 +156,7 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("POST /api/auth/wechat/login", handlers.WechatLogin(app.AuthSvc))
 
 	mux.HandleFunc("GET /api/users/me", handlers.AppUserMeGet(app.UserSvc))
-	mux.HandleFunc("PUT /api/users/me", handlers.AppUserMeUpdate(app.UserSvc))
+	mux.HandleFunc("PUT /api/users/me", handlers.AppUserMeUpdate(app.UserSvc, app.MediaStore, app.MediaMaxUploadBytes))
 	mux.HandleFunc("GET /api/goods", handlers.AppGoodsList(app.ItemSvc))
 	mux.HandleFunc("GET /api/goods/{id}", handlers.AppGoodsGet(app.ItemSvc))
 	mux.HandleFunc("GET /api/tournaments", handlers.AppTournamentsList(app.TournamentSvc))
@@ -175,7 +175,6 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("GET /api/tasks", handlers.AppTasksList(app.TaskSvc))
 	mux.HandleFunc("POST /api/tasks/checkin", handlers.AppTasksCheckin())
 	mux.HandleFunc("POST /api/tasks/{taskCode}/claim", handlers.AppTasksClaim())
-	mux.HandleFunc("POST /api/media/upload", handlers.AppMediaUpload(app.MediaStore, app.MediaMaxUploadBytes))
 
 	// 管理员侧：商品管理 CRUD（暂未接入管理员鉴权中间件）。
 	mux.HandleFunc("POST /admin/goods", handlers.AdminGoodsCreate(app.ItemSvc))
@@ -218,5 +217,4 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("PUT /admin/users/{id}/drinks/use", handlers.AdminUsersDrinksUse())
 	mux.HandleFunc("POST /admin/tournaments/{id}/results/publish", handlers.AdminTournamentResultsPublish())
 	mux.HandleFunc("POST /admin/tournaments/{id}/awards/grant", handlers.AdminTournamentAwardsGrant())
-	mux.HandleFunc("POST /admin/media/upload", handlers.AdminMediaUpload(app.MediaStore, app.MediaMaxUploadBytes))
 }

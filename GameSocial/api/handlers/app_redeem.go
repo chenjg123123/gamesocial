@@ -66,6 +66,15 @@ func AppRedeemOrderList(svc redeem.Service) http.HandlerFunc {
 		offset, _ := strconv.Atoi(q.Get("offset"))
 		limit, _ := strconv.Atoi(q.Get("limit"))
 		status := q.Get("status")
+		if limit <= 0 {
+			limit = 20
+		}
+		if limit > 200 {
+			limit = 200
+		}
+		if offset < 0 {
+			offset = 0
+		}
 
 		out, err := svc.ListOrders(r.Context(), redeem.ListOrderRequest{
 			Offset: offset,

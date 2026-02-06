@@ -23,6 +23,15 @@ func AppGoodsList(svc item.Service) http.HandlerFunc {
 		q := r.URL.Query()
 		offset, _ := strconv.Atoi(q.Get("offset"))
 		limit, _ := strconv.Atoi(q.Get("limit"))
+		if limit <= 0 {
+			limit = 20
+		}
+		if limit > 200 {
+			limit = 200
+		}
+		if offset < 0 {
+			offset = 0
+		}
 
 		out, err := svc.ListGoods(r.Context(), item.ListGoodsRequest{
 			Offset: offset,

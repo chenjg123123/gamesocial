@@ -40,8 +40,6 @@
   - √ [GET /api/redeem/orders](#api-redeem-orders-list)
   - √ [GET /api/redeem/orders/{id}](#api-redeem-orders-get)
   - √ [PUT /api/redeem/orders/{id}/cancel](#api-redeem-orders-cancel)
-- √ [Media 模块（小程序：图片上传）](#module-media-app)
-  - √ [POST /api/media/upload](#api-media-upload)
 
 ## 0. 通用约定
 
@@ -51,7 +49,7 @@
 
 ### 0.2 Content-Type
 
-- 请求：`Content-Type: application/json`
+- 请求：默认 `Content-Type: application/json`；涉及图片上传的接口会使用 `multipart/form-data`
 - 响应：`application/json; charset=utf-8`
 
 ### 0.3 时间格式
@@ -318,12 +316,13 @@ PUT /api/users/me √
 
 - `Authorization: Bearer <token>`
 
-请求体字段：
+请求体支持两种格式：
+
+1) `application/json`：仅更新文字字段
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
 | nickname | string | 否 | 昵称（可为空字符串） |
-| avatarUrl | string | 否 | 头像 URL（可为空字符串） |
 
 请求示例：
 
@@ -331,7 +330,23 @@ PUT /api/users/me √
 curl -X PUT "http://localhost:8080/api/users/me" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d "{\"nickname\":\"9527\",\"avatarUrl\":\"\"}"
+  -d "{\"nickname\":\"9527\"}"
+```
+
+2) `multipart/form-data`：提交表单并在同一个请求里上传头像（仅当用户确认保存资料时才上传；头像 URL 由服务端根据上传结果写入）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| nickname | string | 否 | 昵称（可为空字符串） |
+| file | file | 否 | 头像图片文件（仅允许 `image/*`） |
+
+请求示例：
+
+```bash
+curl -X PUT "http://localhost:8080/api/users/me" \
+  -H "Authorization: Bearer <token>" \
+  -F "nickname=9527" \
+  -F "file=@./avatar.png"
 ```
 
 成功响应 `data`：个人资料对象（同 GET）
@@ -753,70 +768,3 @@ PUT /api/redeem/orders/{id}/cancel √
 - 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L143-L146)
 - Handler：[AppRedeemOrderCancel](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/app_redeem.go#L117-L148)
 - Service：[redeem.CancelOrder](file:///e:/VUE3/新建文件夹/GameSocial/modules/redeem/service.go#L302-L336)
-
----
-
-## module-media-app
-Media 模块（小程序：图片上传） √
-
-请求头：
-
-- `Authorization: Bearer <token>`
-
-### api-media-upload
-POST /api/media/upload √
-
-用途：上传图片到腾讯云 COS，返回可访问的 URL；前端可将返回的 `url` 写入 `avatarUrl/coverUrl` 等字段。
-
-实现位置：
-
-- 路由：[main.go](file:///e:/VUE3/新建文件夹/GameSocial/cmd/server/main.go#L150-L176)
-- Handler：[AppMediaUpload](file:///e:/VUE3/新建文件夹/GameSocial/api/handlers/admin_misc.go#L128-L153)
-- Store：[COSStore](file:///e:/VUE3/新建文件夹/GameSocial/internal/media/store.go#L33-L124)
-
-运行配置（环境变量）：
-
-- `MEDIA_COS_BUCKET_URL`：COS Bucket URL（必填），例如 `https://<bucket>.cos.<region>.myqcloud.com`
-- `MEDIA_COS_SECRET_ID`：腾讯云 SecretId（必填）
-- `MEDIA_COS_SECRET_KEY`：腾讯云 SecretKey（必填）
-- `MEDIA_COS_PUBLIC_BASE_URL`：对外访问的 BaseURL（可选；默认使用 bucket URL）
-- `MEDIA_COS_KEY_PREFIX`：对象 key 前缀（可选；默认 `uploads`）
-- `MEDIA_MAX_UPLOAD_MB`：单文件大小限制（可选；默认 10）
-
-请求：
-
-- Method：`POST`
-- Path：`/api/media/upload`
-- Content-Type：`multipart/form-data`
-- Form：
-  - `file`：图片文件（必须；仅允许 `image/*`）
-
-成功响应 `data`：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| url | string | 可访问 URL |
-| key | string | COS 对象 key |
-| createdAt | string | 创建时间（RFC3339） |
-
-请求示例：
-
-```bash
-curl -X POST "http://localhost:8080/api/media/upload" \
-  -H "Authorization: Bearer <token>" \
-  -F "file=@./avatar.png"
-```
-
-响应示例：
-
-```json
-{
-  "code": 200,
-  "data": {
-    "url": "https://your-bucket.cos.ap-shanghai.myqcloud.com/uploads/20260205/xxxx.png",
-    "key": "uploads/20260205/xxxx.png",
-    "createdAt": "2026-02-05T04:48:47Z"
-  },
-  "message": "ok"
-}
-```

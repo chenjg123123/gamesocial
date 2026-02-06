@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -26,9 +27,9 @@ type User struct {
 
 // UpdateUserRequest 更新用户资料入参（管理员侧可用）。
 type UpdateUserRequest struct {
-	Nickname  string `json:"nickname"`
-	AvatarURL string `json:"avatarUrl"`
-	Status    *int   `json:"status"`
+	Nickname  *string `json:"nickname"`
+	AvatarURL *string `json:"avatarUrl"`
+	Status    *int    `json:"status"`
 }
 
 // ListUserRequest 用户列表入参。
@@ -143,12 +144,29 @@ func (s *service) Update(ctx context.Context, id uint64, req UpdateUserRequest) 
 	if id == 0 {
 		return User{}, errors.New("invalid id")
 	}
-	// 2) 更新用户资料：nickname/avatar_url 可为空；status 用于封禁/解封（例如 0=封禁，1=正常）。
-	result, err := s.db.ExecContext(ctx, `
-		UPDATE user
-		SET nickname = NULLIF(?, ''), avatar_url = NULLIF(?, ''), status = IFNULL(?, status), updated_at = NOW()
-		WHERE id = ?
-	`, req.Nickname, req.AvatarURL, req.Status, id)
+	if req.Nickname == nil && req.AvatarURL == nil && req.Status == nil {
+		return s.Get(ctx, id)
+	}
+
+	sets := make([]string, 0, 4)
+	args := make([]any, 0, 4)
+	if req.Nickname != nil {
+		sets = append(sets, "nickname = NULLIF(?, '')")
+		args = append(args, *req.Nickname)
+	}
+	if req.AvatarURL != nil {
+		sets = append(sets, "avatar_url = NULLIF(?, '')")
+		args = append(args, *req.AvatarURL)
+	}
+	if req.Status != nil {
+		sets = append(sets, "status = ?")
+		args = append(args, *req.Status)
+	}
+	sets = append(sets, "updated_at = NOW()")
+
+	query := "UPDATE user SET " + strings.Join(sets, ", ") + " WHERE id = ?"
+	args = append(args, id)
+	result, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return User{}, err
 	}
