@@ -323,6 +323,7 @@ PUT /api/users/me √
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
 | nickname | string | 否 | 昵称（可为空字符串） |
+| avatarUrl | string | 否 | 头像：可传 URL；也可传 base64 图片数据（data URL 或纯 base64），服务端会上传并写入 URL |
 
 请求示例：
 
@@ -330,7 +331,7 @@ PUT /api/users/me √
 curl -X PUT "http://localhost:8080/api/users/me" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d "{\"nickname\":\"9527\"}"
+  -d "{\"nickname\":\"9527\",\"avatarUrl\":\"data:image/png;base64,AAAA...\"}"
 ```
 
 2) `multipart/form-data`：提交表单并在同一个请求里上传头像（仅当用户确认保存资料时才上传；头像 URL 由服务端根据上传结果写入）

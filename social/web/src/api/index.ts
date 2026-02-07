@@ -24,15 +24,14 @@ export const getMe = async () => {
 
 export const updateMe = async (payload: { nickname: string; avatarUrl?: string; file?: File | null }) => {
   const nn = String(payload.nickname || '').trim()
-  const av = String(payload.avatarUrl || '').trim()
   const file = payload.file || null
   if (file) {
     const fd = new FormData()
     fd.append('nickname', nn)
-    if (av) fd.append('avatarUrl', av)
     fd.append('file', file)
     return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: fd })
   }
+  const av = String(payload.avatarUrl || '').trim()
   return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: { nickname: nn, avatarUrl: av } })
 }
 
@@ -147,6 +146,22 @@ export const adminGetGoods = async (id: number) => {
 }
 
 export const adminUpsertGoods = async (id: number | null, payload: AnyRecord) => {
+  const file = payload.file instanceof File ? (payload.file as File) : null
+  if (file) {
+    const fd = new FormData()
+    for (const [k, v] of Object.entries(payload)) {
+      if (k === 'file' || k === 'coverUrl') continue
+      if (v === undefined || v === null) continue
+      fd.append(k, String(v))
+    }
+    fd.append('file', file)
+    if (id) {
+      await request(`/admin/goods/${id}`, { method: 'PUT', data: fd })
+      return
+    }
+    await request('/admin/goods', { method: 'POST', data: fd })
+    return
+  }
   if (id) {
     await request(`/admin/goods/${id}`, { method: 'PUT', data: payload })
     return
@@ -168,6 +183,22 @@ export const adminGetTournament = async (id: number) => {
 }
 
 export const adminUpsertTournament = async (id: number | null, payload: AnyRecord) => {
+  const file = payload.file instanceof File ? (payload.file as File) : null
+  if (file) {
+    const fd = new FormData()
+    for (const [k, v] of Object.entries(payload)) {
+      if (k === 'file' || k === 'coverUrl') continue
+      if (v === undefined || v === null) continue
+      fd.append(k, String(v))
+    }
+    fd.append('file', file)
+    if (id) {
+      await request(`/admin/tournaments/${id}`, { method: 'PUT', data: fd })
+      return
+    }
+    await request('/admin/tournaments', { method: 'POST', data: fd })
+    return
+  }
   if (id) {
     await request(`/admin/tournaments/${id}`, { method: 'PUT', data: payload })
     return
@@ -210,6 +241,18 @@ export const adminGetUser = async (id: number) => {
 }
 
 export const adminUpdateUser = async (id: number, payload: AnyRecord) => {
+  const file = payload.file instanceof File ? (payload.file as File) : null
+  if (file) {
+    const fd = new FormData()
+    for (const [k, v] of Object.entries(payload)) {
+      if (k === 'file' || k === 'avatarUrl') continue
+      if (v === undefined || v === null) continue
+      fd.append(k, String(v))
+    }
+    fd.append('file', file)
+    await request(`/admin/users/${id}`, { method: 'PUT', data: fd })
+    return
+  }
   await request(`/admin/users/${id}`, { method: 'PUT', data: payload })
 }
 

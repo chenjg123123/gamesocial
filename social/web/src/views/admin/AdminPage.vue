@@ -17,7 +17,6 @@ import {
   adminListTournaments,
   adminListUsers,
   adminListAuditLogs,
-  adminMediaUpload,
   adminUpdateUser,
   adminUpsertGoods,
   adminUpsertTaskDef,
@@ -93,13 +92,6 @@ const pickFileFromChange = (e: Event) => {
 
 const triggerPick = (el: HTMLInputElement | null) => {
   el?.click()
-}
-
-const uploadImageAndGetUrl = async (file: File) => {
-  const res = await adminMediaUpload(file)
-  const url = safeStr(res.url).trim()
-  if (!url) throw new Error('上传失败')
-  return url
 }
 
 const clearPreviewUrl = (url: string) => {
@@ -234,19 +226,12 @@ const submitGoods = async () => {
   const id = asNumber(form.id)
   try {
     await withLoading(async () => {
-      if (goodsCoverFile.value) {
-        const url = await uploadImageAndGetUrl(goodsCoverFile.value)
-        goodsForm.value.coverUrl = url
-        goodsCoverFile.value = null
-        clearPreviewUrl(goodsCoverPreviewUrl.value)
-        goodsCoverPreviewUrl.value = ''
-      }
       const payload = {
         name: String(goodsForm.value.name || '').trim(),
-        coverUrl: String(goodsForm.value.coverUrl || '').trim(),
         pointsPrice: asNumber(goodsForm.value.pointsPrice),
         stock: asNumber(goodsForm.value.stock),
         status: asNumber(String(goodsForm.value.status || '1').trim() || '1'),
+        file: goodsCoverFile.value || undefined,
       }
       await adminUpsertGoods(id || null, payload)
     })
@@ -335,21 +320,14 @@ const submitTournament = async () => {
   const id = asNumber(form.id)
   try {
     await withLoading(async () => {
-      if (tournamentCoverFile.value) {
-        const url = await uploadImageAndGetUrl(tournamentCoverFile.value)
-        tournamentForm.value.coverUrl = url
-        tournamentCoverFile.value = null
-        clearPreviewUrl(tournamentCoverPreviewUrl.value)
-        tournamentCoverPreviewUrl.value = ''
-      }
       const payload = {
         title: String(tournamentForm.value.title || '').trim(),
         content: String(tournamentForm.value.content || '').trim(),
-        coverUrl: String(tournamentForm.value.coverUrl || '').trim(),
         startAt: String(tournamentForm.value.startAt || '').trim(),
         endAt: String(tournamentForm.value.endAt || '').trim(),
         status: String(tournamentForm.value.status || '').trim() || 'DRAFT',
         createdByAdminId: asNumber(tournamentForm.value.createdByAdminId) || 1,
+        file: tournamentCoverFile.value || undefined,
       }
       await adminUpsertTournament(id || null, payload)
     })
@@ -526,17 +504,11 @@ const submitUser = async () => {
   }
   try {
     await withLoading(async () => {
-      if (userAvatarFile.value) {
-        const url = await uploadImageAndGetUrl(userAvatarFile.value)
-        userForm.value.avatarUrl = url
-        userAvatarFile.value = null
-        clearPreviewUrl(userAvatarPreviewUrl.value)
-        userAvatarPreviewUrl.value = ''
-      }
       const payload = {
         nickname: String(userForm.value.nickname || '').trim(),
         avatarUrl: String(userForm.value.avatarUrl || '').trim(),
         status: asNumber(String(userForm.value.status || '1').trim() || '1'),
+        file: userAvatarFile.value || undefined,
       }
       await adminUpdateUser(id, payload)
     })
@@ -668,7 +640,6 @@ onMounted(() => {
           <div class="grid" style="margin-top: 10px">
             <input v-model="goodsForm.name" class="input" placeholder="商品名" />
             <div class="row">
-              <input v-model="goodsForm.coverUrl" class="input" placeholder="封面 URL" />
               <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(goodsCoverFileEl)">选择封面</button>
               <input
                 ref="goodsCoverFileEl"
@@ -724,10 +695,7 @@ onMounted(() => {
           <div class="grid" style="margin-top: 10px">
             <input v-model="tournamentForm.title" class="input" placeholder="标题" />
             <div class="row">
-              <input v-model="tournamentForm.coverUrl" class="input" placeholder="封面 URL" />
-              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(tournamentCoverFileEl)">
-                选择封面
-              </button>
+              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(tournamentCoverFileEl)">选择封面</button>
               <input
                 ref="tournamentCoverFileEl"
                 style="display: none"
@@ -825,7 +793,6 @@ onMounted(() => {
             <div class="muted">当前用户 id：{{ userForm.id || '-' }}</div>
             <input v-model="userForm.nickname" class="input" placeholder="昵称" />
             <div class="row">
-              <input v-model="userForm.avatarUrl" class="input" placeholder="头像 URL" />
               <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(userAvatarFileEl)">选择头像</button>
               <input
                 ref="userAvatarFileEl"

@@ -101,13 +101,22 @@ func AppUserMeUpdate(svc user.Service, store media.Store, maxUploadBytes int64) 
 			}
 		} else {
 			var req struct {
-				Nickname *string `json:"nickname"`
+				Nickname  *string `json:"nickname"`
+				AvatarURL *string `json:"avatarUrl"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				SendJBizFail(w, "参数格式错误")
 				return
 			}
 			nickname = req.Nickname
+			if req.AvatarURL != nil {
+				url, err := maybeUploadImageString(r.Context(), store, maxUploadBytes, *req.AvatarURL)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				avatarURL = &url
+			}
 		}
 
 		out, err := svc.Update(r.Context(), uid, user.UpdateUserRequest{

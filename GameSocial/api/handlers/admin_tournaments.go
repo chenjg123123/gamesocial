@@ -5,13 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
+	"gamesocial/internal/media"
 	"gamesocial/modules/tournament"
 )
 
 // AdminTournamentCreate 创建赛事。
 // POST /admin/tournaments
-func AdminTournamentCreate(svc tournament.Service) http.HandlerFunc {
+func AdminTournamentCreate(svc tournament.Service, store media.Store, maxUploadBytes int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1) 方法校验。
 		if r.Method != http.MethodPost {
@@ -24,11 +27,60 @@ func AdminTournamentCreate(svc tournament.Service) http.HandlerFunc {
 			return
 		}
 
-		// 3) 解析请求体：创建赛事需要 start_at/end_at 等字段。
 		var req tournament.CreateTournamentRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			SendJBizFail(w, "参数格式错误")
-			return
+		ct := strings.TrimSpace(r.Header.Get("Content-Type"))
+		if strings.HasPrefix(strings.ToLower(ct), "multipart/form-data") {
+			if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			req.Title = strings.TrimSpace(r.FormValue("title"))
+			req.Content = strings.TrimSpace(r.FormValue("content"))
+			req.Status = strings.TrimSpace(r.FormValue("status"))
+			req.CreatedByAdmin = parseUint64(strings.TrimSpace(r.FormValue("createdByAdminId")))
+
+			if v := strings.TrimSpace(r.FormValue("startAt")); v != "" {
+				tm, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					SendJBizFail(w, "startAt 格式错误")
+					return
+				}
+				req.StartAt = tm
+			}
+			if v := strings.TrimSpace(r.FormValue("endAt")); v != "" {
+				tm, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					SendJBizFail(w, "endAt 格式错误")
+					return
+				}
+				req.EndAt = tm
+			}
+
+			if f, _, err := r.FormFile("file"); err == nil {
+				_ = f.Close()
+				out, err := uploadImageToStore(r, store, maxUploadBytes)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = out.URL
+			} else if err != nil && err != http.ErrMissingFile {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+		} else {
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			if req.CoverURL != "" {
+				url, err := maybeUploadImageString(r.Context(), store, maxUploadBytes, req.CoverURL)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = url
+			}
 		}
 
 		// 4) 调用业务层：写库并返回创建后的赛事详情。
@@ -44,7 +96,7 @@ func AdminTournamentCreate(svc tournament.Service) http.HandlerFunc {
 
 // AdminTournamentUpdate 更新赛事。
 // PUT /admin/tournaments/{id}
-func AdminTournamentUpdate(svc tournament.Service) http.HandlerFunc {
+func AdminTournamentUpdate(svc tournament.Service, store media.Store, maxUploadBytes int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1) 方法校验。
 		if r.Method != http.MethodPut {
@@ -65,11 +117,66 @@ func AdminTournamentUpdate(svc tournament.Service) http.HandlerFunc {
 			return
 		}
 
-		// 4) 解析请求体。
 		var req tournament.UpdateTournamentRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			SendJBizFail(w, "参数格式错误")
-			return
+		ct := strings.TrimSpace(r.Header.Get("Content-Type"))
+		if strings.HasPrefix(strings.ToLower(ct), "multipart/form-data") {
+			if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			req.Title = strings.TrimSpace(r.FormValue("title"))
+			req.Content = strings.TrimSpace(r.FormValue("content"))
+			req.Status = strings.TrimSpace(r.FormValue("status"))
+
+			if v := strings.TrimSpace(r.FormValue("startAt")); v != "" {
+				tm, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					SendJBizFail(w, "startAt 格式错误")
+					return
+				}
+				req.StartAt = tm
+			}
+			if v := strings.TrimSpace(r.FormValue("endAt")); v != "" {
+				tm, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					SendJBizFail(w, "endAt 格式错误")
+					return
+				}
+				req.EndAt = tm
+			}
+
+			if f, _, err := r.FormFile("file"); err == nil {
+				_ = f.Close()
+				out, err := uploadImageToStore(r, store, maxUploadBytes)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = out.URL
+			} else if err != nil && err != http.ErrMissingFile {
+				SendJBizFail(w, "参数格式错误")
+				return
+			} else {
+				cur, err := svc.Get(r.Context(), id)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = cur.CoverURL
+			}
+		} else {
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			if req.CoverURL != "" {
+				url, err := maybeUploadImageString(r.Context(), store, maxUploadBytes, req.CoverURL)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = url
+			}
 		}
 
 		// 5) 调用业务层：更新并返回最新详情。

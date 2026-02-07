@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"gamesocial/internal/media"
 	"gamesocial/modules/item"
 )
 
 // AdminGoodsCreate 创建商品。
 // POST /admin/goods
-func AdminGoodsCreate(svc item.Service) http.HandlerFunc {
+func AdminGoodsCreate(svc item.Service, store media.Store, maxUploadBytes int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1) 方法校验：创建商品必须是 POST。
 		if r.Method != http.MethodPost {
@@ -24,11 +26,44 @@ func AdminGoodsCreate(svc item.Service) http.HandlerFunc {
 			return
 		}
 
-		// 3) 解析请求体：读取 JSON 到 CreateGoodsRequest。
 		var req item.CreateGoodsRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			SendJBizFail(w, "参数格式错误")
-			return
+		ct := strings.TrimSpace(r.Header.Get("Content-Type"))
+		if strings.HasPrefix(strings.ToLower(ct), "multipart/form-data") {
+			if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			req.Name = strings.TrimSpace(r.FormValue("name"))
+			req.CoverURL = ""
+			req.PointsPrice, _ = strconv.ParseInt(strings.TrimSpace(r.FormValue("pointsPrice")), 10, 64)
+			req.Stock, _ = strconv.Atoi(strings.TrimSpace(r.FormValue("stock")))
+			req.Status, _ = strconv.Atoi(strings.TrimSpace(r.FormValue("status")))
+
+			if f, _, err := r.FormFile("file"); err == nil {
+				_ = f.Close()
+				out, err := uploadImageToStore(r, store, maxUploadBytes)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = out.URL
+			} else if err != nil && err != http.ErrMissingFile {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+		} else {
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			if req.CoverURL != "" {
+				url, err := maybeUploadImageString(r.Context(), store, maxUploadBytes, req.CoverURL)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = url
+			}
 		}
 
 		// 4) 调用业务层：落库并返回创建后的商品详情。
@@ -44,7 +79,7 @@ func AdminGoodsCreate(svc item.Service) http.HandlerFunc {
 
 // AdminGoodsUpdate 更新商品。
 // PUT /admin/goods/{id}
-func AdminGoodsUpdate(svc item.Service) http.HandlerFunc {
+func AdminGoodsUpdate(svc item.Service, store media.Store, maxUploadBytes int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1) 方法校验：更新商品必须是 PUT。
 		if r.Method != http.MethodPut {
@@ -65,11 +100,50 @@ func AdminGoodsUpdate(svc item.Service) http.HandlerFunc {
 			return
 		}
 
-		// 4) 解析请求体。
 		var req item.UpdateGoodsRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			SendJBizFail(w, "参数格式错误")
-			return
+		ct := strings.TrimSpace(r.Header.Get("Content-Type"))
+		if strings.HasPrefix(strings.ToLower(ct), "multipart/form-data") {
+			if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			req.Name = strings.TrimSpace(r.FormValue("name"))
+			req.PointsPrice, _ = strconv.ParseInt(strings.TrimSpace(r.FormValue("pointsPrice")), 10, 64)
+			req.Stock, _ = strconv.Atoi(strings.TrimSpace(r.FormValue("stock")))
+			req.Status, _ = strconv.Atoi(strings.TrimSpace(r.FormValue("status")))
+
+			if f, _, err := r.FormFile("file"); err == nil {
+				_ = f.Close()
+				out, err := uploadImageToStore(r, store, maxUploadBytes)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = out.URL
+			} else if err != nil && err != http.ErrMissingFile {
+				SendJBizFail(w, "参数格式错误")
+				return
+			} else {
+				cur, err := svc.GetGoods(r.Context(), id)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = cur.CoverURL
+			}
+		} else {
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				SendJBizFail(w, "参数格式错误")
+				return
+			}
+			if req.CoverURL != "" {
+				url, err := maybeUploadImageString(r.Context(), store, maxUploadBytes, req.CoverURL)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = url
+			}
 		}
 
 		// 5) 调用业务层：更新成功后返回最新详情。

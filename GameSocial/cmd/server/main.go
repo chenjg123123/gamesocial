@@ -177,17 +177,17 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("POST /api/tasks/{taskCode}/claim", handlers.AppTasksClaim())
 
 	// 管理员侧：商品管理 CRUD（暂未接入管理员鉴权中间件）。
-	mux.HandleFunc("POST /admin/goods", handlers.AdminGoodsCreate(app.ItemSvc))
+	mux.HandleFunc("POST /admin/goods", handlers.AdminGoodsCreate(app.ItemSvc, app.MediaStore, app.MediaMaxUploadBytes))
 	mux.HandleFunc("GET /admin/goods", handlers.AdminGoodsList(app.ItemSvc))
 	mux.HandleFunc("GET /admin/goods/{id}", handlers.AdminGoodsGet(app.ItemSvc))
-	mux.HandleFunc("PUT /admin/goods/{id}", handlers.AdminGoodsUpdate(app.ItemSvc))
+	mux.HandleFunc("PUT /admin/goods/{id}", handlers.AdminGoodsUpdate(app.ItemSvc, app.MediaStore, app.MediaMaxUploadBytes))
 	mux.HandleFunc("DELETE /admin/goods/{id}", handlers.AdminGoodsDelete(app.ItemSvc))
 
 	// 管理员侧：赛事管理 CRUD。
-	mux.HandleFunc("POST /admin/tournaments", handlers.AdminTournamentCreate(app.TournamentSvc))
+	mux.HandleFunc("POST /admin/tournaments", handlers.AdminTournamentCreate(app.TournamentSvc, app.MediaStore, app.MediaMaxUploadBytes))
 	mux.HandleFunc("GET /admin/tournaments", handlers.AdminTournamentList(app.TournamentSvc))
 	mux.HandleFunc("GET /admin/tournaments/{id}", handlers.AdminTournamentGet(app.TournamentSvc))
-	mux.HandleFunc("PUT /admin/tournaments/{id}", handlers.AdminTournamentUpdate(app.TournamentSvc))
+	mux.HandleFunc("PUT /admin/tournaments/{id}", handlers.AdminTournamentUpdate(app.TournamentSvc, app.MediaStore, app.MediaMaxUploadBytes))
 	mux.HandleFunc("DELETE /admin/tournaments/{id}", handlers.AdminTournamentDelete(app.TournamentSvc))
 
 	// 管理员侧：任务定义管理 CRUD。

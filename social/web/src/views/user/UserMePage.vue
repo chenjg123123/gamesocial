@@ -124,10 +124,9 @@ const pickAvatar = (e: Event) => {
 
 const saveProfile = async () => {
   const nn = nickname.value.trim()
-  const av = avatarUrl.value.trim()
   saving.value = true
   try {
-    const profile = await updateMe({ nickname: nn, avatarUrl: av, file: pendingAvatarFile.value })
+    const profile = await updateMe({ nickname: nn, file: pendingAvatarFile.value })
     auth.setUser(profile)
     applyProfile(profile)
     toast.show('已保存', 'success')
@@ -271,7 +270,6 @@ onMounted(() => {
                 accept="image/*"
                 @change="pickAvatar"
               />
-              <input v-model="avatarUrl" class="input" placeholder="可粘贴头像 URL（或选择本地图片）" />
             </div>
             <div v-if="pendingAvatarFile" class="help" style="margin-top: 6px">已选择：{{ pendingAvatarFile.name }}</div>
             <img

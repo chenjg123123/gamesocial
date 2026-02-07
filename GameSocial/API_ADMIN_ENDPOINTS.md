@@ -183,7 +183,7 @@ POST /admin/goods √
 实现逻辑：
 
 1. 校验方法为 `POST`，并校验 `svc` 已注入。
-2. 解析 JSON body 为创建请求对象，进行基础校验（必填字段、数值范围等）。
+2. 解析 `multipart/form-data` 表单字段（含可选 `file`），进行基础校验（必填字段、数值范围等）。
 3. 写入 `goods` 表并返回创建后的商品对象。
 4. 返回 `SendJSuccess`。
 
@@ -191,24 +191,27 @@ POST /admin/goods √
 
 - Method：`POST`
 - Path：`/admin/goods`
-- Body：JSON
+- Body：`multipart/form-data`
 
-请求体字段：
+表单字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
 | name | string | 是 | 商品名 |
-| coverUrl | string | 否 | 封面 URL（可为空字符串） |
 | pointsPrice | number | 是 | 所需积分（必须 >= 0） |
 | stock | number | 是 | 库存（必须 >= 0） |
 | status | number | 否 | 1=上架，0=下架；不传/传 0 会默认写入 1 |
+| file | file | 否 | 封面图片（二进制；仅允许 `image/*`） |
 
 请求示例：
 
 ```bash
 curl -X POST "http://localhost:8080/admin/goods" \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"可乐\",\"coverUrl\":\"\",\"pointsPrice\":30,\"stock\":100,\"status\":1}"
+  -F "name=可乐" \
+  -F "pointsPrice=30" \
+  -F "stock=100" \
+  -F "status=1" \
+  -F "file=@./cover.png"
 ```
 
 成功响应 `data` 为商品对象：
@@ -370,7 +373,7 @@ PUT /admin/goods/{id} √
 实现逻辑：
 
 1. 校验方法为 `PUT`，并校验 `svc` 已注入。
-2. 解析 path 参数 `id`，并解析 JSON body 为更新请求对象。
+2. 解析 path 参数 `id`，并解析 `multipart/form-data` 表单字段（含可选 `file`；不传则保留原封面）。
 3. 更新 `goods` 表的可变字段并返回更新后的商品对象。
 4. 返回 `SendJSuccess`。
 
@@ -378,24 +381,27 @@ PUT /admin/goods/{id} √
 
 - Method：`PUT`
 - Path：`/admin/goods/{id}`
-- Body：JSON（字段同创建）
+- Body：`multipart/form-data`（字段同创建；不传 file 则保留原封面）
 
-请求体字段：
+表单字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
 | name | string | 是 | 商品名 |
-| coverUrl | string | 否 | 封面 URL（可为空字符串） |
 | pointsPrice | number | 是 | 所需积分（必须 >= 0） |
 | stock | number | 是 | 库存（必须 >= 0） |
 | status | number | 否 | 1=上架，0=下架；不传/传 0 会默认写入 1 |
+| file | file | 否 | 封面图片（二进制；仅允许 `image/*`） |
 
 请求示例：
 
 ```bash
 curl -X PUT "http://localhost:8080/admin/goods/1" \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"可乐(大)\",\"coverUrl\":\"\",\"pointsPrice\":35,\"stock\":80,\"status\":1}"
+  -F "name=可乐(大)" \
+  -F "pointsPrice=35" \
+  -F "stock=80" \
+  -F "status=1" \
+  -F "file=@./cover.png"
 ```
 
 响应 `data`：更新后的商品对象（结构同创建响应的商品对象）。
@@ -478,28 +484,33 @@ POST /admin/tournaments √
 实现逻辑：
 
 1. 校验方法为 `POST`，并校验 `svc` 已注入。
-2. 解析 JSON body 为 `CreateTournamentRequest`。
+2. 解析 `multipart/form-data` 表单字段（含可选 `file`）为创建入参。
 3. 调用 `svc.Create(ctx, req)` 写入 `tournament` 表，并返回创建后的赛事详情。
 4. 返回 `SendJSuccess`。
 
-请求体字段：
+表单字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
 | title | string | 是 | 标题 |
 | content | string | 否 | 详情（可为空字符串） |
-| coverUrl | string | 否 | 封面 URL（可为空字符串） |
 | startAt | string | 是 | 开始时间（RFC3339） |
 | endAt | string | 是 | 结束时间（RFC3339，必须 >= startAt） |
 | status | string | 否 | DRAFT/PUBLISHED/FINISHED/CANCELED；不传默认 DRAFT |
 | createdByAdminId | number | 否 | 创建人管理员 ID；不传默认 1 |
+| file | file | 否 | 封面图片（二进制；仅允许 `image/*`） |
 
 请求示例：
 
 ```bash
 curl -X POST "http://localhost:8080/admin/tournaments" \
-  -H "Content-Type: application/json" \
-  -d "{\"title\":\"周赛\",\"content\":\"\",\"coverUrl\":\"\",\"startAt\":\"2026-02-01T12:00:00Z\",\"endAt\":\"2026-02-01T16:00:00Z\",\"status\":\"PUBLISHED\",\"createdByAdminId\":1}"
+  -F "title=周赛" \
+  -F "content=" \
+  -F "startAt=2026-02-01T12:00:00Z" \
+  -F "endAt=2026-02-01T16:00:00Z" \
+  -F "status=PUBLISHED" \
+  -F "createdByAdminId=1" \
+  -F "file=@./cover.png"
 ```
 
 成功响应 `data`：赛事对象。
@@ -668,27 +679,31 @@ PUT /admin/tournaments/{id} √
 实现逻辑：
 
 1. 校验方法为 `PUT`，并校验 `svc` 已注入。
-2. 从 path 解析 `id`，并解析 JSON body 为 `UpdateTournamentRequest`。
+2. 从 path 解析 `id`，并解析 `multipart/form-data` 表单字段（含可选 `file`；不传则保留原封面）为更新入参。
 3. 调用 `svc.Update(ctx, id, req)` 更新赛事并返回最新详情。
 4. 返回 `SendJSuccess`。
 
-请求体字段：
+表单字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
 | title | string | 是 | 标题 |
 | content | string | 否 | 详情 |
-| coverUrl | string | 否 | 封面 |
 | startAt | string | 是 | 开始时间 |
 | endAt | string | 是 | 结束时间 |
 | status | string | 否 | DRAFT/PUBLISHED/FINISHED/CANCELED；不传默认 DRAFT |
+| file | file | 否 | 封面图片（二进制；仅允许 `image/*`）；不传则保留原封面 |
 
 请求示例：
 
 ```bash
 curl -X PUT "http://localhost:8080/admin/tournaments/1" \
-  -H "Content-Type: application/json" \
-  -d "{\"title\":\"周赛(更新)\",\"content\":\"\",\"coverUrl\":\"\",\"startAt\":\"2026-02-01T12:00:00Z\",\"endAt\":\"2026-02-01T16:00:00Z\",\"status\":\"PUBLISHED\"}"
+  -F "title=周赛(更新)" \
+  -F "content=" \
+  -F "startAt=2026-02-01T12:00:00Z" \
+  -F "endAt=2026-02-01T16:00:00Z" \
+  -F "status=PUBLISHED" \
+  -F "file=@./cover.png"
 ```
 
 响应 `data`：更新后的 `Tournament`

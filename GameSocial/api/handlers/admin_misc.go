@@ -1,9 +1,13 @@
 package handlers
 
 import (
+	"bytes"
+	"context"
+	"encoding/base64"
 	"errors"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"gamesocial/internal/media"
@@ -144,4 +148,80 @@ func uploadImageToStore(r *http.Request, store media.Store, maxUploadBytes int64
 	}
 
 	return store.Upload(r.Context(), file, ct, header.Filename)
+}
+
+func maybeUploadImageString(ctx context.Context, store media.Store, maxUploadBytes int64, v string) (string, error) {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
+		return v, nil
+	}
+
+	if store == nil {
+		return "", errors.New("media store not configured: set MEDIA_COS_BUCKET_URL and restart server")
+	}
+	if maxUploadBytes <= 0 {
+		maxUploadBytes = 10 * 1024 * 1024
+	}
+
+	contentType := ""
+	raw := v
+	if strings.HasPrefix(strings.ToLower(v), "data:") {
+		lower := strings.ToLower(v)
+		idx := strings.Index(lower, ";base64,")
+		if idx <= len("data:") {
+			return "", errors.New("invalid image data")
+		}
+		contentType = strings.TrimSpace(v[len("data:"):idx])
+		raw = v[idx+len(";base64,"):]
+	}
+
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", errors.New("invalid image data")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil {
+		decoded, err = base64.RawStdEncoding.DecodeString(raw)
+		if err != nil {
+			return "", errors.New("invalid image base64")
+		}
+	}
+	if int64(len(decoded)) > maxUploadBytes {
+		return "", errors.New("file too large")
+	}
+
+	if contentType == "" {
+		contentType = http.DetectContentType(decoded)
+	}
+	if !strings.HasPrefix(contentType, "image/") {
+		return "", errors.New("only image/* is allowed")
+	}
+
+	ext := ""
+	switch contentType {
+	case "image/jpeg":
+		ext = ".jpg"
+	case "image/png":
+		ext = ".png"
+	case "image/webp":
+		ext = ".webp"
+	case "image/gif":
+		ext = ".gif"
+	}
+	if ext == "" {
+		ext = strings.ToLower(filepath.Ext("x" + contentType))
+	}
+	if ext == "" {
+		ext = ".png"
+	}
+
+	out, err := store.Upload(ctx, bytes.NewReader(decoded), contentType, "upload"+ext)
+	if err != nil {
+		return "", err
+	}
+	return out.URL, nil
 }
