@@ -22,17 +22,66 @@ export const getMe = async () => {
   return await request<AnyRecord>('/api/users/me')
 }
 
+type TempUploadItem = {
+  objectId?: unknown
+  uploadUrl?: unknown
+  downloadUrl?: unknown
+  authorization?: unknown
+  token?: unknown
+  cloudObjectMeta?: unknown
+}
+
+type TempUploadInfosRes = {
+  sessionId?: unknown
+  items?: unknown
+}
+
+export const apiGetTempUploadInfos = async (payload: { count: number; contentType: string; scene?: string }) => {
+  const countRaw = Number(payload && payload.count)
+  const count = Number.isFinite(countRaw) ? Math.max(1, Math.min(10, Math.floor(countRaw))) : 1
+  const contentType = String((payload && payload.contentType) || '').trim() || 'application/octet-stream'
+  const scene = String((payload && payload.scene) || '').trim()
+
+  const data: AnyRecord = { count, contentType }
+  if (scene) data.scene = scene
+
+  const res = await request<TempUploadInfosRes>('/api/media/temp-upload-infos', { method: 'POST', data })
+  const rawItems = Array.isArray(res.items) ? (res.items as unknown[]) : []
+  return {
+    sessionId: typeof res.sessionId === 'string' ? res.sessionId : '',
+    items: rawItems as TempUploadItem[],
+  }
+}
+
+export const directPutToUploadUrl = async (
+  uploadUrl: string,
+  file: Blob,
+  headers: Record<string, string>
+) => {
+  const url = String(uploadUrl || '').trim()
+  if (!url) throw new Error('uploadUrl 为空')
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers,
+    body: file,
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 export const updateMe = async (payload: { nickname: string; avatarUrl?: string; file?: File | null }) => {
   const nn = String(payload.nickname || '').trim()
-  const file = payload.file || null
-  if (file) {
-    const fd = new FormData()
-    fd.append('nickname', nn)
-    fd.append('file', file)
-    return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: fd })
-  }
   const av = String(payload.avatarUrl || '').trim()
-  return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: { nickname: nn, avatarUrl: av } })
+  const file = payload.file || null
+
+  if (!file) {
+    return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: { nickname: nn, avatarUrl: av } })
+  }
+
+  const fd = new FormData()
+  fd.append('nickname', nn)
+  if (av) fd.append('avatarUrl', av)
+  fd.append('file', file)
+  return await request<AnyRecord>('/api/users/me', { method: 'PUT', data: fd })
 }
 
 export const apiMediaUpload = async (file: File) => {

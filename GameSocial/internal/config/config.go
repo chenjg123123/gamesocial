@@ -33,16 +33,10 @@ type Config struct {
 	// MediaMaxUploadMB: 上传文件大小限制（MB）。
 	MediaMaxUploadMB int64
 
-	// 腾讯云 COS 配置：用于将图片直接上传到 COS，不落本地文件目录。
-	MediaCOSBucketURL     string
-	MediaCOSPublicBaseURL string
-	MediaCOSSecretID      string
-	MediaCOSSecretKey     string
-	MediaCOSKeyPathPrefix string
-
-	MediaCloudBaseTokenType   string
-	MediaCloudBaseAccessToken string
-	MediaCloudBaseDeviceID    string
+	// 服务端上传（COS SDK）配置：
+	MediaCOSBucketURL string
+	MediaCOSSecretID  string
+	MediaCOSSecretKey string
 
 	// WechatAppID/WechatAppSecret: 微信小程序的 appid/secret，用于 code2session 换取 openid。
 	WechatAppID     string
@@ -72,29 +66,24 @@ func LoadConfig() (Config, error) {
 	}
 
 	cfg := Config{
-		ServerPort:                mustInt(getenv("SERVER_PORT", "8080")),
-		DBDSN:                     os.Getenv("DB_DSN"),
-		DBEnabled:                 mustBool(getenv("DB_ENABLED", "true")),
-		DBHost:                    getenv("DB_HOST", "127.0.0.1"),
-		DBPort:                    mustInt(getenv("DB_PORT", "3306")),
-		DBUser:                    getenv("DB_USER", "root"),
-		DBPassword:                os.Getenv("DB_PASSWORD"),
-		DBName:                    getenv("DB_NAME", "gamesocial"),
-		MediaDir:                  getenv("MEDIA_DIR", "./data/media"),
-		BaseURL:                   getenv("BASE_URL", "http://localhost:8080"),
-		MediaMaxUploadMB:          mustInt64(getenv("MEDIA_MAX_UPLOAD_MB", "10")),
-		MediaCOSBucketURL:         os.Getenv("MEDIA_COS_BUCKET_URL"),
-		MediaCOSPublicBaseURL:     getenv("MEDIA_COS_PUBLIC_BASE_URL", ""),
-		MediaCOSSecretID:          os.Getenv("MEDIA_COS_SECRET_ID"),
-		MediaCOSSecretKey:         os.Getenv("MEDIA_COS_SECRET_KEY"),
-		MediaCOSKeyPathPrefix:     getenv("MEDIA_COS_KEY_PREFIX", "uploads"),
-		MediaCloudBaseTokenType:   getenv("MEDIA_CLOUDBASE_TOKEN_TYPE", ""),
-		MediaCloudBaseAccessToken: os.Getenv("MEDIA_CLOUDBASE_ACCESS_TOKEN"),
-		MediaCloudBaseDeviceID:    getenv("MEDIA_CLOUDBASE_DEVICE_ID", ""),
-		WechatAppID:               os.Getenv("WECHAT_APP_ID"),
-		WechatAppSecret:           os.Getenv("WECHAT_APP_SECRET"),
-		AuthTokenSecret:           os.Getenv("AUTH_TOKEN_SECRET"),
-		AuthTokenTTLSeconds:       mustInt64(getenv("AUTH_TOKEN_TTL_SECONDS", "604800")),
+		ServerPort:          mustInt(getenv("SERVER_PORT", "8080")),
+		DBDSN:               os.Getenv("DB_DSN"),
+		DBEnabled:           mustBool(getenv("DB_ENABLED", "true")),
+		DBHost:              getenv("DB_HOST", "127.0.0.1"),
+		DBPort:              mustInt(getenv("DB_PORT", "3306")),
+		DBUser:              getenv("DB_USER", "root"),
+		DBPassword:          os.Getenv("DB_PASSWORD"),
+		DBName:              getenv("DB_NAME", "gamesocial"),
+		MediaDir:            getenv("MEDIA_DIR", "./data/media"),
+		BaseURL:             getenv("BASE_URL", "http://localhost:8080"),
+		MediaMaxUploadMB:    mustInt64(getenv("MEDIA_MAX_UPLOAD_MB", "10")),
+		MediaCOSBucketURL:   os.Getenv("MEDIA_COS_BUCKET_URL"),
+		MediaCOSSecretID:    os.Getenv("MEDIA_COS_SECRET_ID"),
+		MediaCOSSecretKey:   os.Getenv("MEDIA_COS_SECRET_KEY"),
+		WechatAppID:         os.Getenv("WECHAT_APP_ID"),
+		WechatAppSecret:     os.Getenv("WECHAT_APP_SECRET"),
+		AuthTokenSecret:     os.Getenv("AUTH_TOKEN_SECRET"),
+		AuthTokenTTLSeconds: mustInt64(getenv("AUTH_TOKEN_TTL_SECONDS", "604800")),
 	}
 
 	if cfg.ServerPort <= 0 {

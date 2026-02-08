@@ -110,6 +110,29 @@ BizCode 枚举（当前实现）：
 - 小程序端需要登录的接口会解析 `Authorization: Bearer <token>`，从 token 的 `sub` 字段得到 `userId`；不需要再额外传 `userId` 参数。
 - `/admin/*` 管理端接口仍暂未接入 token 校验。
 
+### 0.7 数据库升级（9527：遇到 Unknown column 必看）
+
+如果后台管理端调用商品/赛事相关接口时出现：
+
+```json
+{
+  "code": 201,
+  "message": "Error 1054 (42S22): Unknown column 't.image_urls_json' in 'field list'"
+}
+```
+
+说明后端 SQL 已经在读取 `image_urls_json`（用于多图），但你的数据库还是旧表结构。
+
+在目标库执行以下 SQL 补齐字段（不要整库 DROP 重建）：
+
+```sql
+ALTER TABLE tournament
+  ADD COLUMN image_urls_json JSON NULL COMMENT '赛事图片 URL 列表 JSON（可为空）' AFTER cover_url;
+
+ALTER TABLE goods
+  ADD COLUMN image_urls_json JSON NULL COMMENT '商品图片 URL 列表 JSON（可为空）' AFTER cover_url;
+```
+
 ---
 
 ## module-health
@@ -183,7 +206,7 @@ POST /admin/goods √
 实现逻辑：
 
 1. 校验方法为 `POST`，并校验 `svc` 已注入。
-2. 解析 `multipart/form-data` 表单字段（含可选 `file`），进行基础校验（必填字段、数值范围等）。
+2. 解析 `multipart/form-data` 表单字段（含可选 `file/files` 多图），进行基础校验（必填字段、数值范围等）。
 3. 写入 `goods` 表并返回创建后的商品对象。
 4. 返回 `SendJSuccess`。
 
@@ -191,7 +214,12 @@ POST /admin/goods √
 
 - Method：`POST`
 - Path：`/admin/goods`
-- Body：`multipart/form-data`
+- Body：支持 `multipart/form-data` 或 `application/json`
+
+上传方式说明：
+
+- 如果后端启用了「服务端 COS SDK 上传」：可以用 `multipart/form-data` 直接传 `file/files`
+- 如果后端启用了「CloudBase 客户端直传」：不要传 `file/files`，请先走 `/api/media/temp-upload-infos` 直传拿到图片 URL，然后用 JSON 把 URL 传给本接口（`imageUrls/coverUrl`）
 
 表单字段：
 
@@ -201,7 +229,19 @@ POST /admin/goods √
 | pointsPrice | number | 是 | 所需积分（必须 >= 0） |
 | stock | number | 是 | 库存（必须 >= 0） |
 | status | number | 否 | 1=上架，0=下架；不传/传 0 会默认写入 1 |
-| file | file | 否 | 封面图片（二进制；仅允许 `image/*`） |
+| files | file[] | 否 | 商品图片（可多张；仅允许 `image/*`；最多 9 张） |
+| file | file | 否 | 兼容字段：等同于 `files`（单图） |
+
+JSON 字段（用于“先直传再提交”）：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| name | string | 是 | 商品名 |
+| pointsPrice | number | 是 | 所需积分 |
+| stock | number | 是 | 库存 |
+| status | number | 否 | 1=上架，0=下架 |
+| coverUrl | string | 否 | 封面 URL（不传时会用 imageUrls[0] 兜底） |
+| imageUrls | string[] | 否 | 图片 URL 列表 |
 
 请求示例：
 
@@ -211,7 +251,8 @@ curl -X POST "http://localhost:8080/admin/goods" \
   -F "pointsPrice=30" \
   -F "stock=100" \
   -F "status=1" \
-  -F "file=@./cover.png"
+  -F "files=@./1.png" \
+  -F "files=@./2.png"
 ```
 
 成功响应 `data` 为商品对象：
@@ -221,6 +262,7 @@ curl -X POST "http://localhost:8080/admin/goods" \
 | id | number | 商品 ID |
 | name | string | 商品名 |
 | coverUrl | string | 封面 URL |
+| imageUrls | string[] | 商品图片 URL 列表 |
 | pointsPrice | number | 所需积分 |
 | stock | number | 库存 |
 | status | number | 1=上架，0=下架（软删除会置 0） |
@@ -234,7 +276,11 @@ curl -X POST "http://localhost:8080/admin/goods" \
   "data": {
     "id": 1,
     "name": "可乐",
-    "coverUrl": "",
+    "coverUrl": "https://example.com/1.png",
+    "imageUrls": [
+      "https://example.com/1.png",
+      "https://example.com/2.png"
+    ],
     "pointsPrice": 30,
     "stock": 100,
     "status": 1,
@@ -288,7 +334,11 @@ curl -X GET "http://localhost:8080/admin/goods?offset=0&limit=20&status=1"
     {
       "id": 2,
       "name": "雪碧",
-      "coverUrl": "",
+      "coverUrl": "https://example.com/1.png",
+      "imageUrls": [
+        "https://example.com/1.png",
+        "https://example.com/2.png"
+      ],
       "pointsPrice": 20,
       "stock": 50,
       "status": 1,
@@ -297,7 +347,10 @@ curl -X GET "http://localhost:8080/admin/goods?offset=0&limit=20&status=1"
     {
       "id": 1,
       "name": "可乐",
-      "coverUrl": "",
+      "coverUrl": "https://example.com/1.png",
+      "imageUrls": [
+        "https://example.com/1.png"
+      ],
       "pointsPrice": 30,
       "stock": 100,
       "status": 1,
@@ -349,7 +402,11 @@ curl -X GET "http://localhost:8080/admin/goods/1"
   "data": {
     "id": 1,
     "name": "可乐",
-    "coverUrl": "",
+    "coverUrl": "https://example.com/1.png",
+    "imageUrls": [
+      "https://example.com/1.png",
+      "https://example.com/2.png"
+    ],
     "pointsPrice": 30,
     "stock": 100,
     "status": 1,
@@ -373,7 +430,7 @@ PUT /admin/goods/{id} √
 实现逻辑：
 
 1. 校验方法为 `PUT`，并校验 `svc` 已注入。
-2. 解析 path 参数 `id`，并解析 `multipart/form-data` 表单字段（含可选 `file`；不传则保留原封面）。
+2. 解析 path 参数 `id`，并解析 `multipart/form-data` 表单字段（含可选 `file/files` 多图；不传则保留原图片列表）。
 3. 更新 `goods` 表的可变字段并返回更新后的商品对象。
 4. 返回 `SendJSuccess`。
 
@@ -381,7 +438,7 @@ PUT /admin/goods/{id} √
 
 - Method：`PUT`
 - Path：`/admin/goods/{id}`
-- Body：`multipart/form-data`（字段同创建；不传 file 则保留原封面）
+- Body：`multipart/form-data`（字段同创建；不传 file/files 则保留原图片列表）
 
 表单字段：
 
@@ -391,7 +448,8 @@ PUT /admin/goods/{id} √
 | pointsPrice | number | 是 | 所需积分（必须 >= 0） |
 | stock | number | 是 | 库存（必须 >= 0） |
 | status | number | 否 | 1=上架，0=下架；不传/传 0 会默认写入 1 |
-| file | file | 否 | 封面图片（二进制；仅允许 `image/*`） |
+| files | file[] | 否 | 商品图片（可多张；仅允许 `image/*`；最多 9 张） |
+| file | file | 否 | 兼容字段：等同于 `files`（单图） |
 
 请求示例：
 
@@ -401,7 +459,8 @@ curl -X PUT "http://localhost:8080/admin/goods/1" \
   -F "pointsPrice=35" \
   -F "stock=80" \
   -F "status=1" \
-  -F "file=@./cover.png"
+  -F "files=@./1.png" \
+  -F "files=@./2.png"
 ```
 
 响应 `data`：更新后的商品对象（结构同创建响应的商品对象）。
@@ -414,7 +473,11 @@ curl -X PUT "http://localhost:8080/admin/goods/1" \
   "data": {
     "id": 1,
     "name": "可乐(大)",
-    "coverUrl": "",
+    "coverUrl": "https://example.com/1.png",
+    "imageUrls": [
+      "https://example.com/1.png",
+      "https://example.com/2.png"
+    ],
     "pointsPrice": 35,
     "stock": 80,
     "status": 1,
@@ -484,9 +547,20 @@ POST /admin/tournaments √
 实现逻辑：
 
 1. 校验方法为 `POST`，并校验 `svc` 已注入。
-2. 解析 `multipart/form-data` 表单字段（含可选 `file`）为创建入参。
+2. 解析 `multipart/form-data` 表单字段（含可选 `file/files` 多图）为创建入参。
 3. 调用 `svc.Create(ctx, req)` 写入 `tournament` 表，并返回创建后的赛事详情。
 4. 返回 `SendJSuccess`。
+
+请求：
+
+- Method：`POST`
+- Path：`/admin/tournaments`
+- Body：支持 `multipart/form-data` 或 `application/json`
+
+上传方式说明：
+
+- 如果后端启用了「服务端 COS SDK 上传」：可以用 `multipart/form-data` 直接传 `file/files`
+- 如果后端启用了「CloudBase 客户端直传」：不要传 `file/files`，请先走 `/api/media/temp-upload-infos` 直传拿到图片 URL，然后用 JSON 把 URL 传给本接口（`imageUrls/coverUrl`）
 
 表单字段：
 
@@ -498,7 +572,21 @@ POST /admin/tournaments √
 | endAt | string | 是 | 结束时间（RFC3339，必须 >= startAt） |
 | status | string | 否 | DRAFT/PUBLISHED/FINISHED/CANCELED；不传默认 DRAFT |
 | createdByAdminId | number | 否 | 创建人管理员 ID；不传默认 1 |
-| file | file | 否 | 封面图片（二进制；仅允许 `image/*`） |
+| files | file[] | 否 | 赛事图片（可多张；仅允许 `image/*`；最多 9 张） |
+| file | file | 否 | 兼容字段：等同于 `files`（单图） |
+
+JSON 字段（用于“先直传再提交”）：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| title | string | 是 | 标题 |
+| content | string | 否 | 详情 |
+| startAt | string | 是 | 开始时间（RFC3339） |
+| endAt | string | 是 | 结束时间（RFC3339） |
+| status | string | 否 | 状态 |
+| createdByAdminId | number | 否 | 创建人管理员 ID |
+| coverUrl | string | 否 | 封面 URL（不传时会用 imageUrls[0] 兜底） |
+| imageUrls | string[] | 否 | 图片 URL 列表 |
 
 请求示例：
 
@@ -510,7 +598,8 @@ curl -X POST "http://localhost:8080/admin/tournaments" \
   -F "endAt=2026-02-01T16:00:00Z" \
   -F "status=PUBLISHED" \
   -F "createdByAdminId=1" \
-  -F "file=@./cover.png"
+  -F "files=@./1.png" \
+  -F "files=@./2.png"
 ```
 
 成功响应 `data`：赛事对象。
@@ -523,6 +612,7 @@ curl -X POST "http://localhost:8080/admin/tournaments" \
 | title | string | 标题 |
 | content | string | 详情 |
 | coverUrl | string | 封面 |
+| imageUrls | string[] | 赛事图片 URL 列表 |
 | startAt | string | 开始时间 |
 | endAt | string | 结束时间 |
 | status | string | 状态 |
@@ -539,7 +629,11 @@ curl -X POST "http://localhost:8080/admin/tournaments" \
     "id": 1,
     "title": "周赛",
     "content": "",
-    "coverUrl": "",
+    "coverUrl": "https://example.com/1.png",
+    "imageUrls": [
+      "https://example.com/1.png",
+      "https://example.com/2.png"
+    ],
     "startAt": "2026-02-01T12:00:00Z",
     "endAt": "2026-02-01T16:00:00Z",
     "status": "PUBLISHED",
@@ -593,7 +687,11 @@ curl -X GET "http://localhost:8080/admin/tournaments?offset=0&limit=20&status=PU
       "id": 2,
       "title": "周赛(第二期)",
       "content": "",
-      "coverUrl": "",
+      "coverUrl": "https://example.com/1.png",
+      "imageUrls": [
+        "https://example.com/1.png",
+        "https://example.com/2.png"
+      ],
       "startAt": "2026-02-08T12:00:00Z",
       "endAt": "2026-02-08T16:00:00Z",
       "status": "PUBLISHED",
@@ -606,6 +704,7 @@ curl -X GET "http://localhost:8080/admin/tournaments?offset=0&limit=20&status=PU
       "title": "周赛",
       "content": "",
       "coverUrl": "",
+      "imageUrls": [],
       "startAt": "2026-02-01T12:00:00Z",
       "endAt": "2026-02-01T16:00:00Z",
       "status": "PUBLISHED",
@@ -654,6 +753,7 @@ curl -X GET "http://localhost:8080/admin/tournaments/1"
     "title": "周赛",
     "content": "",
     "coverUrl": "",
+    "imageUrls": [],
     "startAt": "2026-02-01T12:00:00Z",
     "endAt": "2026-02-01T16:00:00Z",
     "status": "PUBLISHED",
@@ -679,9 +779,20 @@ PUT /admin/tournaments/{id} √
 实现逻辑：
 
 1. 校验方法为 `PUT`，并校验 `svc` 已注入。
-2. 从 path 解析 `id`，并解析 `multipart/form-data` 表单字段（含可选 `file`；不传则保留原封面）为更新入参。
+2. 从 path 解析 `id`，并解析 `multipart/form-data` 表单字段（含可选 `file/files` 多图；不传则保留原图片列表）为更新入参。
 3. 调用 `svc.Update(ctx, id, req)` 更新赛事并返回最新详情。
 4. 返回 `SendJSuccess`。
+
+请求：
+
+- Method：`PUT`
+- Path：`/admin/tournaments/{id}`
+- Body：支持 `multipart/form-data` 或 `application/json`
+
+上传方式说明：
+
+- 如果后端启用了「服务端 COS SDK 上传」：可以用 `multipart/form-data` 直接传 `file/files`
+- 如果后端启用了「CloudBase 客户端直传」：不要传 `file/files`，请先走 `/api/media/temp-upload-infos` 直传拿到图片 URL，然后用 JSON 把 URL 传给本接口（`imageUrls/coverUrl`）
 
 表单字段：
 
@@ -692,7 +803,20 @@ PUT /admin/tournaments/{id} √
 | startAt | string | 是 | 开始时间 |
 | endAt | string | 是 | 结束时间 |
 | status | string | 否 | DRAFT/PUBLISHED/FINISHED/CANCELED；不传默认 DRAFT |
-| file | file | 否 | 封面图片（二进制；仅允许 `image/*`）；不传则保留原封面 |
+| files | file[] | 否 | 赛事图片（可多张；仅允许 `image/*`；最多 9 张） |
+| file | file | 否 | 兼容字段：等同于 `files`（单图） |
+
+JSON 字段（用于“先直传再提交”）：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| title | string | 否 | 标题 |
+| content | string | 否 | 详情 |
+| startAt | string | 否 | 开始时间 |
+| endAt | string | 否 | 结束时间 |
+| status | string | 否 | 状态 |
+| coverUrl | string | 否 | 封面 URL（不传时会用 imageUrls[0] 兜底；传空字符串表示清空） |
+| imageUrls | string[] | 否 | 图片 URL 列表（传空数组表示清空） |
 
 请求示例：
 
@@ -703,7 +827,8 @@ curl -X PUT "http://localhost:8080/admin/tournaments/1" \
   -F "startAt=2026-02-01T12:00:00Z" \
   -F "endAt=2026-02-01T16:00:00Z" \
   -F "status=PUBLISHED" \
-  -F "file=@./cover.png"
+  -F "files=@./1.png" \
+  -F "files=@./2.png"
 ```
 
 响应 `data`：更新后的 `Tournament`
@@ -717,7 +842,11 @@ curl -X PUT "http://localhost:8080/admin/tournaments/1" \
     "id": 1,
     "title": "周赛(更新)",
     "content": "",
-    "coverUrl": "",
+    "coverUrl": "https://example.com/1.png",
+    "imageUrls": [
+      "https://example.com/1.png",
+      "https://example.com/2.png"
+    ],
     "startAt": "2026-02-01T12:00:00Z",
     "endAt": "2026-02-01T16:00:00Z",
     "status": "PUBLISHED",

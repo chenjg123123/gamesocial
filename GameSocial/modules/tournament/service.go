@@ -4,8 +4,10 @@ package tournament
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -15,6 +17,7 @@ type Tournament struct {
 	Title          string    `json:"title"`
 	Content        string    `json:"content,omitempty"`
 	CoverURL       string    `json:"coverUrl,omitempty"`
+	ImageURLs      []string  `json:"imageUrls,omitempty"`
 	StartAt        time.Time `json:"startAt"`
 	EndAt          time.Time `json:"endAt"`
 	Status         string    `json:"status"`
@@ -28,6 +31,7 @@ type CreateTournamentRequest struct {
 	Title          string    `json:"title"`
 	Content        string    `json:"content"`
 	CoverURL       string    `json:"coverUrl"`
+	ImageURLs      []string  `json:"imageUrls,omitempty"`
 	StartAt        time.Time `json:"startAt"`
 	EndAt          time.Time `json:"endAt"`
 	Status         string    `json:"status"`
@@ -36,12 +40,13 @@ type CreateTournamentRequest struct {
 
 // UpdateTournamentRequest 更新赛事入参。
 type UpdateTournamentRequest struct {
-	Title    string    `json:"title"`
-	Content  string    `json:"content"`
-	CoverURL string    `json:"coverUrl"`
-	StartAt  time.Time `json:"startAt"`
-	EndAt    time.Time `json:"endAt"`
-	Status   string    `json:"status"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	CoverURL  string    `json:"coverUrl"`
+	ImageURLs []string  `json:"imageUrls,omitempty"`
+	StartAt   time.Time `json:"startAt"`
+	EndAt     time.Time `json:"endAt"`
+	Status    string    `json:"status"`
 }
 
 // ListTournamentRequest 列表查询入参。
@@ -139,11 +144,33 @@ func (s *service) Create(ctx context.Context, req CreateTournamentRequest) (Tour
 		req.CreatedByAdmin = 1
 	}
 
+	if len(req.ImageURLs) == 0 && req.CoverURL != "" {
+		req.ImageURLs = []string{req.CoverURL}
+	}
+	if len(req.ImageURLs) > 0 {
+		req.CoverURL = req.ImageURLs[0]
+	}
+
+	imageURLsJSON := ""
+	if len(req.ImageURLs) > 0 {
+		b, err := json.Marshal(req.ImageURLs)
+		if err != nil {
+			return Tournament{}, errors.New("invalid imageUrls")
+		}
+		imageURLsJSON = string(b)
+	}
+
 	// 2) 写入 tournament 表，并返回创建后的详情。
 	res, err := s.db.ExecContext(ctx, `
-		INSERT INTO tournament (title, content, cover_url, start_at, end_at, status, created_by_admin_id, created_at, updated_at)
-		VALUES (?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())
-	`, req.Title, req.Content, req.CoverURL, req.StartAt, req.EndAt, req.Status, req.CreatedByAdmin)
+		INSERT INTO tournament (title, content, cover_url, image_urls_json, start_at, end_at, status, created_by_admin_id, created_at, updated_at)
+		VALUES (?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())
+	`, req.Title, req.Content, req.CoverURL, imageURLsJSON, req.StartAt, req.EndAt, req.Status, req.CreatedByAdmin)
+	if err != nil && isUnknownColumn(err, "image_urls_json") {
+		res, err = s.db.ExecContext(ctx, `
+			INSERT INTO tournament (title, content, cover_url, start_at, end_at, status, created_by_admin_id, created_at, updated_at)
+			VALUES (?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?, NOW(), NOW())
+		`, req.Title, req.Content, req.CoverURL, req.StartAt, req.EndAt, req.Status, req.CreatedByAdmin)
+	}
 	if err != nil {
 		return Tournament{}, err
 	}
@@ -176,12 +203,35 @@ func (s *service) Update(ctx context.Context, id uint64, req UpdateTournamentReq
 		req.Status = "DRAFT"
 	}
 
+	if len(req.ImageURLs) == 0 && req.CoverURL != "" {
+		req.ImageURLs = []string{req.CoverURL}
+	}
+	if len(req.ImageURLs) > 0 {
+		req.CoverURL = req.ImageURLs[0]
+	}
+
+	imageURLsJSON := ""
+	if len(req.ImageURLs) > 0 {
+		b, err := json.Marshal(req.ImageURLs)
+		if err != nil {
+			return Tournament{}, errors.New("invalid imageUrls")
+		}
+		imageURLsJSON = string(b)
+	}
+
 	// 2) 更新可变字段，并刷新 updated_at。
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE tournament
-		SET title = ?, content = NULLIF(?, ''), cover_url = NULLIF(?, ''), start_at = ?, end_at = ?, status = ?, updated_at = NOW()
+		SET title = ?, content = NULLIF(?, ''), cover_url = NULLIF(?, ''), image_urls_json = NULLIF(?, ''), start_at = ?, end_at = ?, status = ?, updated_at = NOW()
 		WHERE id = ?
-	`, req.Title, req.Content, req.CoverURL, req.StartAt, req.EndAt, req.Status, id)
+	`, req.Title, req.Content, req.CoverURL, imageURLsJSON, req.StartAt, req.EndAt, req.Status, id)
+	if err != nil && isUnknownColumn(err, "image_urls_json") {
+		result, err = s.db.ExecContext(ctx, `
+			UPDATE tournament
+			SET title = ?, content = NULLIF(?, ''), cover_url = NULLIF(?, ''), start_at = ?, end_at = ?, status = ?, updated_at = NOW()
+			WHERE id = ?
+		`, req.Title, req.Content, req.CoverURL, req.StartAt, req.EndAt, req.Status, id)
+	}
 	if err != nil {
 		return Tournament{}, err
 	}
@@ -230,14 +280,34 @@ func (s *service) Get(ctx context.Context, id uint64) (Tournament, error) {
 
 	// 2) 查询单条记录：content/cover_url 可空。
 	var t Tournament
-	var content, cover sql.NullString
+	var content, cover, imageURLs sql.NullString
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, title, content, cover_url, start_at, end_at, status, created_by_admin_id, created_at, updated_at
+		SELECT id, title, content, cover_url, image_urls_json, start_at, end_at, status, created_by_admin_id, created_at, updated_at
 		FROM tournament
 		WHERE id = ?
 		LIMIT 1
 	`, id)
-	if err := row.Scan(&t.ID, &t.Title, &content, &cover, &t.StartAt, &t.EndAt, &t.Status, &t.CreatedByAdmin, &t.CreatedAt, &t.UpdatedAt); err != nil {
+	if err := row.Scan(&t.ID, &t.Title, &content, &cover, &imageURLs, &t.StartAt, &t.EndAt, &t.Status, &t.CreatedByAdmin, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if isUnknownColumn(err, "image_urls_json") {
+			row2 := s.db.QueryRowContext(ctx, `
+				SELECT id, title, content, cover_url, start_at, end_at, status, created_by_admin_id, created_at, updated_at
+				FROM tournament
+				WHERE id = ?
+				LIMIT 1
+			`, id)
+			if err2 := row2.Scan(&t.ID, &t.Title, &content, &cover, &t.StartAt, &t.EndAt, &t.Status, &t.CreatedByAdmin, &t.CreatedAt, &t.UpdatedAt); err2 != nil {
+				if err2 == sql.ErrNoRows {
+					return Tournament{}, fmt.Errorf("tournament not found")
+				}
+				return Tournament{}, err2
+			}
+			t.Content = content.String
+			t.CoverURL = cover.String
+			if t.CoverURL != "" {
+				t.ImageURLs = []string{t.CoverURL}
+			}
+			return t, nil
+		}
 		if err == sql.ErrNoRows {
 			return Tournament{}, fmt.Errorf("tournament not found")
 		}
@@ -245,6 +315,15 @@ func (s *service) Get(ctx context.Context, id uint64) (Tournament, error) {
 	}
 	t.Content = content.String
 	t.CoverURL = cover.String
+	if imageURLs.Valid && strings.TrimSpace(imageURLs.String) != "" {
+		var list []string
+		if err := json.Unmarshal([]byte(imageURLs.String), &list); err == nil {
+			t.ImageURLs = list
+		}
+	}
+	if len(t.ImageURLs) == 0 && t.CoverURL != "" {
+		t.ImageURLs = []string{t.CoverURL}
+	}
 	return t, nil
 }
 
@@ -276,13 +355,24 @@ func (s *service) List(ctx context.Context, req ListTournamentRequest) ([]Tourna
 	args = append(args, req.Limit, req.Offset)
 
 	// 3) 查询列表：按 start_at 倒序，便于后台优先看到最近赛事。
+	withImageURLsJSON := true
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, title, IFNULL(content, ''), IFNULL(cover_url, ''), start_at, end_at, status, created_by_admin_id, created_at, updated_at
+		SELECT id, title, IFNULL(content, ''), IFNULL(cover_url, ''), IFNULL(image_urls_json, ''), start_at, end_at, status, created_by_admin_id, created_at, updated_at
 		FROM tournament
 		`+where+`
 		ORDER BY start_at DESC, id DESC
 		LIMIT ? OFFSET ?
 	`, args...)
+	if err != nil && isUnknownColumn(err, "image_urls_json") {
+		withImageURLsJSON = false
+		rows, err = s.db.QueryContext(ctx, `
+			SELECT id, title, IFNULL(content, ''), IFNULL(cover_url, ''), start_at, end_at, status, created_by_admin_id, created_at, updated_at
+			FROM tournament
+			`+where+`
+			ORDER BY start_at DESC, id DESC
+			LIMIT ? OFFSET ?
+		`, args...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -291,8 +381,24 @@ func (s *service) List(ctx context.Context, req ListTournamentRequest) ([]Tourna
 	out := make([]Tournament, 0, req.Limit)
 	for rows.Next() {
 		var t Tournament
-		if err := rows.Scan(&t.ID, &t.Title, &t.Content, &t.CoverURL, &t.StartAt, &t.EndAt, &t.Status, &t.CreatedByAdmin, &t.CreatedAt, &t.UpdatedAt); err != nil {
-			return nil, err
+		var imageURLsJSON string
+		if withImageURLsJSON {
+			if err := rows.Scan(&t.ID, &t.Title, &t.Content, &t.CoverURL, &imageURLsJSON, &t.StartAt, &t.EndAt, &t.Status, &t.CreatedByAdmin, &t.CreatedAt, &t.UpdatedAt); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := rows.Scan(&t.ID, &t.Title, &t.Content, &t.CoverURL, &t.StartAt, &t.EndAt, &t.Status, &t.CreatedByAdmin, &t.CreatedAt, &t.UpdatedAt); err != nil {
+				return nil, err
+			}
+		}
+		if strings.TrimSpace(imageURLsJSON) != "" {
+			var list []string
+			if err := json.Unmarshal([]byte(imageURLsJSON), &list); err == nil {
+				t.ImageURLs = list
+			}
+		}
+		if len(t.ImageURLs) == 0 && t.CoverURL != "" {
+			t.ImageURLs = []string{t.CoverURL}
 		}
 		out = append(out, t)
 	}
@@ -339,9 +445,10 @@ func (s *service) ListJoined(ctx context.Context, userID uint64, req ListJoinedT
 	}
 	args = append(args, req.Limit, req.Offset)
 
+	withImageURLsJSON := true
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT
-			t.id, t.title, IFNULL(t.content, ''), IFNULL(t.cover_url, ''), t.start_at, t.end_at, t.status, t.created_by_admin_id, t.created_at, t.updated_at,
+			t.id, t.title, IFNULL(t.content, ''), IFNULL(t.cover_url, ''), IFNULL(t.image_urls_json, ''), t.start_at, t.end_at, t.status, t.created_by_admin_id, t.created_at, t.updated_at,
 			p.join_status, p.joined_at
 		FROM tournament_participant p
 		INNER JOIN tournament t ON t.id = p.tournament_id
@@ -349,6 +456,19 @@ func (s *service) ListJoined(ctx context.Context, userID uint64, req ListJoinedT
 		ORDER BY p.joined_at DESC, p.id DESC
 		LIMIT ? OFFSET ?
 	`, args...)
+	if err != nil && isUnknownColumn(err, "image_urls_json") {
+		withImageURLsJSON = false
+		rows, err = s.db.QueryContext(ctx, `
+			SELECT
+				t.id, t.title, IFNULL(t.content, ''), IFNULL(t.cover_url, ''), t.start_at, t.end_at, t.status, t.created_by_admin_id, t.created_at, t.updated_at,
+				p.join_status, p.joined_at
+			FROM tournament_participant p
+			INNER JOIN tournament t ON t.id = p.tournament_id
+			`+where+`
+			ORDER BY p.joined_at DESC, p.id DESC
+			LIMIT ? OFFSET ?
+		`, args...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -357,11 +477,30 @@ func (s *service) ListJoined(ctx context.Context, userID uint64, req ListJoinedT
 	out := make([]JoinedTournament, 0, req.Limit)
 	for rows.Next() {
 		var it JoinedTournament
-		if err := rows.Scan(
-			&it.ID, &it.Title, &it.Content, &it.CoverURL, &it.StartAt, &it.EndAt, &it.Status, &it.CreatedByAdmin, &it.CreatedAt, &it.UpdatedAt,
-			&it.JoinStatus, &it.JoinedAt,
-		); err != nil {
-			return nil, err
+		var imageURLsJSON string
+		if withImageURLsJSON {
+			if err := rows.Scan(
+				&it.ID, &it.Title, &it.Content, &it.CoverURL, &imageURLsJSON, &it.StartAt, &it.EndAt, &it.Status, &it.CreatedByAdmin, &it.CreatedAt, &it.UpdatedAt,
+				&it.JoinStatus, &it.JoinedAt,
+			); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := rows.Scan(
+				&it.ID, &it.Title, &it.Content, &it.CoverURL, &it.StartAt, &it.EndAt, &it.Status, &it.CreatedByAdmin, &it.CreatedAt, &it.UpdatedAt,
+				&it.JoinStatus, &it.JoinedAt,
+			); err != nil {
+				return nil, err
+			}
+		}
+		if strings.TrimSpace(imageURLsJSON) != "" {
+			var list []string
+			if err := json.Unmarshal([]byte(imageURLsJSON), &list); err == nil {
+				it.ImageURLs = list
+			}
+		}
+		if len(it.ImageURLs) == 0 && it.CoverURL != "" {
+			it.ImageURLs = []string{it.CoverURL}
 		}
 		out = append(out, it)
 	}
@@ -369,6 +508,14 @@ func (s *service) ListJoined(ctx context.Context, userID uint64, req ListJoinedT
 		return nil, err
 	}
 	return out, nil
+}
+
+func isUnknownColumn(err error, column string) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "Error 1054") && strings.Contains(s, "Unknown column") && strings.Contains(s, column)
 }
 
 func (s *service) Join(ctx context.Context, tournamentID, userID uint64) error {

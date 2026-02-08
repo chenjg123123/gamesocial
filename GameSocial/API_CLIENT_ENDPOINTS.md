@@ -16,6 +16,8 @@
 - √ [User 模块（小程序：个人资料）](#module-user-app)
   - √ [GET /api/users/me](#api-users-me-get)
   - √ [PUT /api/users/me](#api-users-me-update)
+- √ [Media 模块（小程序：临时直传凭证）](#module-media-app)
+  - √ [POST /api/media/temp-upload-infos](#api-media-temp-upload-infos)
 - √ [Points 模块（小程序：积分账户与流水）](#module-points)
   - √ [GET /api/points/balance](#api-points-balance)
   - √ [GET /api/points/ledgers](#api-points-ledgers)
@@ -101,6 +103,29 @@ BizCode 枚举（当前实现）：
 
 - 小程序端需要登录的接口会解析 `Authorization: Bearer <token>`，从 token 的 `sub` 字段得到 `userId`；不需要再额外传 `userId` 参数。
 - `/admin/*` 管理端接口仍暂未接入 token 校验。
+
+### 0.7 数据库升级（9527：遇到 Unknown column 必看）
+
+如果前端调用赛事/商品相关接口时出现：
+
+```json
+{
+  "code": 201,
+  "message": "Error 1054 (42S22): Unknown column 't.image_urls_json' in 'field list'"
+}
+```
+
+说明后端 SQL 已经在读取 `image_urls_json`（用于多图），但你的数据库还是旧表结构。
+
+在目标库执行以下 SQL 补齐字段（不要整库 DROP 重建）：
+
+```sql
+ALTER TABLE tournament
+  ADD COLUMN image_urls_json JSON NULL COMMENT '赛事图片 URL 列表 JSON（可为空）' AFTER cover_url;
+
+ALTER TABLE goods
+  ADD COLUMN image_urls_json JSON NULL COMMENT '商品图片 URL 列表 JSON（可为空）' AFTER cover_url;
+```
 
 ---
 
@@ -336,6 +361,8 @@ curl -X PUT "http://localhost:8080/api/users/me" \
 
 2) `multipart/form-data`：提交表单并在同一个请求里上传头像（仅当用户确认保存资料时才上传；头像 URL 由服务端根据上传结果写入）
 
+注意：这种“把 file 直接传给后端”的方式，只有在后端启用了「服务端 COS SDK 上传」时可用；如果你希望前端直传图片到 COS，请先调用 [POST /api/media/temp-upload-infos](#api-media-temp-upload-infos) 拿到 `downloadUrl`，再把该 URL 回填到 `avatarUrl`。
+
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
 | nickname | string | 否 | 昵称（可为空字符串） |
@@ -351,6 +378,127 @@ curl -X PUT "http://localhost:8080/api/users/me" \
 ```
 
 成功响应 `data`：个人资料对象（同 GET）
+
+---
+
+## module-media-app
+Media 模块（小程序：临时直传凭证） √
+
+### api-media-temp-upload-infos
+POST /api/media/temp-upload-infos √
+
+用途：让前端在“用户确认提交之前”先把图片直传到后端指定的临时目录（`temp/...`），避免用户取消导致正式图片目录被占用。
+
+特点：
+
+- 前端一次申请 N 个上传凭证（最多 10 个），后端返回每个 objectId 对应的直传信息
+- 仅允许已登录用户调用（必须带 `Authorization: Bearer <token>`）
+- 后端为每个 `objectId` 计算一次 PUT 签名（有效期 3 分钟）；前端必须在有效期内完成上传
+- `objectId` 强制固定在 `temp/...` 目录下，避免前端绕过目录隔离写入正式目录
+
+实现位置：
+
+- 路由：[main.go](file:///w:/GOProject/gamesocial/GameSocial/cmd/server/main.go)
+- Handler：[AppMediaTempUploadInfos](file:///w:/GOProject/gamesocial/GameSocial/api/handlers/app_users.go)
+- Media：COS 直传签名生成（[COSStore.GetObjectsUploadInfo](file:///w:/GOProject/gamesocial/GameSocial/internal/media/store.go)）
+
+请求头：
+
+- `Authorization: Bearer <token>`
+- `Content-Type: application/json`
+
+请求体字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| count | number | 是 | 申请的上传“坑位”数量，范围 1~10 |
+| contentType | string | 否 | 图片类型，默认 `image/png` |
+| scene | string | 否 | 场景目录：`goods`/`tournament`/`user`/`common`，默认 `common` |
+
+前端对接要点：
+
+- 后端不接收 `items` 入参；需要由前端先算出 `count=待上传图片数量`
+- `contentType` 建议同一批次保持一致（例如全是 `image/png`）；如果同一批图片类型不同，建议按类型分批调用本接口
+
+常见错误（会返回 `count 参数错误`）：
+
+```json
+{
+  "items": [
+    { "contentType": "image/png" }
+  ]
+}
+```
+
+正确请求（把 `items.length` 转成 `count`，并把 `contentType` 提到顶层）：
+
+```json
+{
+  "count": 1,
+  "contentType": "image/png",
+  "scene": "tournament"
+}
+```
+
+请求示例（9527 一次申请 3 张赛事临时图）：
+
+```bash
+curl -X POST "http://localhost:8080/api/media/temp-upload-infos" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d "{\"count\":3,\"contentType\":\"image/png\",\"scene\":\"tournament\"}"
+```
+
+成功响应 `data` 字段：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| sessionId | string | 本次临时上传会话 ID（建议前端保存，用于后续“提交/绑定”） |
+| scene | string | 实际使用的场景目录 |
+| items | array | 每个坑位的直传信息数组 |
+
+`items[]` 字段：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| objectId | string | 目标对象路径（已固定在 `temp/...`） |
+| uploadUrl | string | 直传 PUT URL（不带签名 query） |
+| downloadUrl | string | 上传完成后可访问的 URL（可能为空时由后端兜底拼接） |
+| authorization | string | PUT 请求 `Authorization` 值（必填） |
+| token | string | 预留字段（当前为空） |
+| cloudObjectMeta | string | 预留字段（当前为空） |
+
+响应示例（截断）：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "sessionId": "e3b0c44298fc1c149afbf4c8996fb924",
+    "scene": "tournament",
+    "items": [
+      {
+        "objectId": "temp/tournament/u1/e3b0c44298fc1c149afbf4c8996fb924/20260208/2aa0...f3.png",
+        "uploadUrl": "https://<bucket>.cos.<region>.myqcloud.com/temp/tournament/u1/e3b0c44298fc1c149afbf4c8996fb924/20260208/2aa0...f3.png",
+        "downloadUrl": "https://.../temp/...",
+        "authorization": "q-sign-algorithm=sha1&q-ak=...&q-sign-time=...&q-key-time=...&q-header-list=host&q-url-param-list=&q-signature=...",
+        "token": "",
+        "cloudObjectMeta": ""
+      }
+    ]
+  },
+  "message": "ok"
+}
+```
+
+前端 PUT 上传时的请求头（对每个 items[i] 执行一次 PUT）：
+
+- `Authorization: <authorization>`
+- `Content-Type: <contentType>`
+
+备注：
+
+- 需要在 COS 控制台配置 CORS，至少允许 `PUT`，并放行请求头 `Authorization` 与 `Content-Type`
 
 ---
 

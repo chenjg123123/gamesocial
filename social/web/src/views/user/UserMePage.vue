@@ -126,7 +126,11 @@ const saveProfile = async () => {
   const nn = nickname.value.trim()
   saving.value = true
   try {
-    const profile = await updateMe({ nickname: nn, file: pendingAvatarFile.value })
+    const profile = await updateMe({
+      nickname: nn,
+      avatarUrl: avatarUrl.value.trim(),
+      file: pendingAvatarFile.value,
+    })
     auth.setUser(profile)
     applyProfile(profile)
     toast.show('已保存', 'success')

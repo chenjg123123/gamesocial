@@ -46,7 +46,8 @@ type App struct {
 	RedeemSvc redeem.Service
 
 	// MediaStore: 媒体上传存储（如腾讯云 COS）。
-	MediaStore media.Store
+	MediaServerStore media.ServerStore
+	MediaDirectStore media.DirectStore
 	// MediaMaxUploadBytes: 上传文件大小限制（字节）。
 	MediaMaxUploadBytes int64
 }
@@ -92,21 +93,24 @@ func main() {
 	}
 
 	app.MediaMaxUploadBytes = cfg.MediaMaxUploadMB * 1024 * 1024
-	if cfg.MediaCOSBucketURL != "" {
-		store, err := media.NewStore(
+
+	// 媒体能力只分两类：
+	// 1) MediaServerStore：服务端接收文件并用 COS SDK 上传（管理员后台/部分接口会用到）
+	// 2) MediaDirectStore：后端只下发“直传凭证”，前端自己 PUT 上传（小程序多图上传会用到）
+
+	if cfg.MediaCOSBucketURL != "" && cfg.MediaCOSSecretID != "" && cfg.MediaCOSSecretKey != "" {
+		store, err := media.NewCOSStore(
 			cfg.MediaCOSBucketURL,
 			cfg.MediaCOSSecretID,
 			cfg.MediaCOSSecretKey,
-			cfg.MediaCOSPublicBaseURL,
-			cfg.MediaCOSKeyPathPrefix,
-			cfg.MediaCloudBaseTokenType,
-			cfg.MediaCloudBaseAccessToken,
-			cfg.MediaCloudBaseDeviceID,
+			"",
+			"uploads",
 		)
 		if err != nil {
-			log.Fatalf("init media store: %v", err)
+			log.Fatalf("init media server store: %v", err)
 		}
-		app.MediaStore = store
+		app.MediaServerStore = store
+		app.MediaDirectStore = store
 	}
 
 	// 使用 net/http 的 ServeMux 进行路由分发（Go 1.22+ 支持 "METHOD /path" 形式的模式）。
@@ -156,7 +160,9 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("POST /api/auth/wechat/login", handlers.WechatLogin(app.AuthSvc))
 
 	mux.HandleFunc("GET /api/users/me", handlers.AppUserMeGet(app.UserSvc))
-	mux.HandleFunc("PUT /api/users/me", handlers.AppUserMeUpdate(app.UserSvc, app.MediaStore, app.MediaMaxUploadBytes))
+	mux.HandleFunc("PUT /api/users/me", handlers.AppUserMeUpdate(app.UserSvc, app.MediaServerStore, app.MediaMaxUploadBytes))
+	// 小程序端：申请“临时目录 temp/”的直传凭证，用于多图上传（用户取消不污染正式目录）。
+	mux.HandleFunc("POST /api/media/temp-upload-infos", handlers.AppMediaTempUploadInfos(app.MediaDirectStore))
 	mux.HandleFunc("GET /api/goods", handlers.AppGoodsList(app.ItemSvc))
 	mux.HandleFunc("GET /api/goods/{id}", handlers.AppGoodsGet(app.ItemSvc))
 	mux.HandleFunc("GET /api/tournaments", handlers.AppTournamentsList(app.TournamentSvc))
@@ -177,17 +183,17 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("POST /api/tasks/{taskCode}/claim", handlers.AppTasksClaim())
 
 	// 管理员侧：商品管理 CRUD（暂未接入管理员鉴权中间件）。
-	mux.HandleFunc("POST /admin/goods", handlers.AdminGoodsCreate(app.ItemSvc, app.MediaStore, app.MediaMaxUploadBytes))
+	mux.HandleFunc("POST /admin/goods", handlers.AdminGoodsCreate(app.ItemSvc, app.MediaServerStore, app.MediaMaxUploadBytes))
 	mux.HandleFunc("GET /admin/goods", handlers.AdminGoodsList(app.ItemSvc))
 	mux.HandleFunc("GET /admin/goods/{id}", handlers.AdminGoodsGet(app.ItemSvc))
-	mux.HandleFunc("PUT /admin/goods/{id}", handlers.AdminGoodsUpdate(app.ItemSvc, app.MediaStore, app.MediaMaxUploadBytes))
+	mux.HandleFunc("PUT /admin/goods/{id}", handlers.AdminGoodsUpdate(app.ItemSvc, app.MediaServerStore, app.MediaMaxUploadBytes))
 	mux.HandleFunc("DELETE /admin/goods/{id}", handlers.AdminGoodsDelete(app.ItemSvc))
 
 	// 管理员侧：赛事管理 CRUD。
-	mux.HandleFunc("POST /admin/tournaments", handlers.AdminTournamentCreate(app.TournamentSvc, app.MediaStore, app.MediaMaxUploadBytes))
+	mux.HandleFunc("POST /admin/tournaments", handlers.AdminTournamentCreate(app.TournamentSvc, app.MediaServerStore, app.MediaMaxUploadBytes))
 	mux.HandleFunc("GET /admin/tournaments", handlers.AdminTournamentList(app.TournamentSvc))
 	mux.HandleFunc("GET /admin/tournaments/{id}", handlers.AdminTournamentGet(app.TournamentSvc))
-	mux.HandleFunc("PUT /admin/tournaments/{id}", handlers.AdminTournamentUpdate(app.TournamentSvc, app.MediaStore, app.MediaMaxUploadBytes))
+	mux.HandleFunc("PUT /admin/tournaments/{id}", handlers.AdminTournamentUpdate(app.TournamentSvc, app.MediaServerStore, app.MediaMaxUploadBytes))
 	mux.HandleFunc("DELETE /admin/tournaments/{id}", handlers.AdminTournamentDelete(app.TournamentSvc))
 
 	// 管理员侧：任务定义管理 CRUD。

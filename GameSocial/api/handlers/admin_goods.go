@@ -13,7 +13,7 @@ import (
 
 // AdminGoodsCreate 创建商品。
 // POST /admin/goods
-func AdminGoodsCreate(svc item.Service, store media.Store, maxUploadBytes int64) http.HandlerFunc {
+func AdminGoodsCreate(svc item.Service, store media.ServerStore, maxUploadBytes int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1) 方法校验：创建商品必须是 POST。
 		if r.Method != http.MethodPost {
@@ -39,15 +39,23 @@ func AdminGoodsCreate(svc item.Service, store media.Store, maxUploadBytes int64)
 			req.Stock, _ = strconv.Atoi(strings.TrimSpace(r.FormValue("stock")))
 			req.Status, _ = strconv.Atoi(strings.TrimSpace(r.FormValue("status")))
 
-			if f, _, err := r.FormFile("file"); err == nil {
-				_ = f.Close()
-				out, err := uploadImageToStore(r, store, maxUploadBytes)
+			if r.MultipartForm != nil && (len(r.MultipartForm.File["file"])+len(r.MultipartForm.File["files"]) > 0) {
+				outs, err := uploadImagesToStore(r, store, maxUploadBytes)
 				if err != nil {
 					SendJBizFail(w, err.Error())
 					return
 				}
-				req.CoverURL = out.URL
-			} else if err != nil && err != http.ErrMissingFile {
+				urls := make([]string, 0, len(outs))
+				for _, it := range outs {
+					if it.URL != "" {
+						urls = append(urls, it.URL)
+					}
+				}
+				req.ImageURLs = urls
+				if len(urls) > 0 {
+					req.CoverURL = urls[0]
+				}
+			} else if r.MultipartForm == nil {
 				SendJBizFail(w, "参数格式错误")
 				return
 			}
@@ -56,13 +64,26 @@ func AdminGoodsCreate(svc item.Service, store media.Store, maxUploadBytes int64)
 				SendJBizFail(w, "参数格式错误")
 				return
 			}
-			if req.CoverURL != "" {
+			if req.ImageURLs != nil {
+				urls, err := maybeUploadImageStrings(r.Context(), store, maxUploadBytes, req.ImageURLs)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.ImageURLs = urls
+				if len(urls) > 0 {
+					req.CoverURL = urls[0]
+				}
+			} else if req.CoverURL != "" {
 				url, err := maybeUploadImageString(r.Context(), store, maxUploadBytes, req.CoverURL)
 				if err != nil {
 					SendJBizFail(w, err.Error())
 					return
 				}
 				req.CoverURL = url
+				if url != "" {
+					req.ImageURLs = []string{url}
+				}
 			}
 		}
 
@@ -79,7 +100,7 @@ func AdminGoodsCreate(svc item.Service, store media.Store, maxUploadBytes int64)
 
 // AdminGoodsUpdate 更新商品。
 // PUT /admin/goods/{id}
-func AdminGoodsUpdate(svc item.Service, store media.Store, maxUploadBytes int64) http.HandlerFunc {
+func AdminGoodsUpdate(svc item.Service, store media.ServerStore, maxUploadBytes int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1) 方法校验：更新商品必须是 PUT。
 		if r.Method != http.MethodPut {
@@ -112,17 +133,22 @@ func AdminGoodsUpdate(svc item.Service, store media.Store, maxUploadBytes int64)
 			req.Stock, _ = strconv.Atoi(strings.TrimSpace(r.FormValue("stock")))
 			req.Status, _ = strconv.Atoi(strings.TrimSpace(r.FormValue("status")))
 
-			if f, _, err := r.FormFile("file"); err == nil {
-				_ = f.Close()
-				out, err := uploadImageToStore(r, store, maxUploadBytes)
+			if r.MultipartForm != nil && (len(r.MultipartForm.File["file"])+len(r.MultipartForm.File["files"]) > 0) {
+				outs, err := uploadImagesToStore(r, store, maxUploadBytes)
 				if err != nil {
 					SendJBizFail(w, err.Error())
 					return
 				}
-				req.CoverURL = out.URL
-			} else if err != nil && err != http.ErrMissingFile {
-				SendJBizFail(w, "参数格式错误")
-				return
+				urls := make([]string, 0, len(outs))
+				for _, it := range outs {
+					if it.URL != "" {
+						urls = append(urls, it.URL)
+					}
+				}
+				req.ImageURLs = urls
+				if len(urls) > 0 {
+					req.CoverURL = urls[0]
+				}
 			} else {
 				cur, err := svc.GetGoods(r.Context(), id)
 				if err != nil {
@@ -130,19 +156,43 @@ func AdminGoodsUpdate(svc item.Service, store media.Store, maxUploadBytes int64)
 					return
 				}
 				req.CoverURL = cur.CoverURL
+				req.ImageURLs = cur.ImageURLs
 			}
 		} else {
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				SendJBizFail(w, "参数格式错误")
 				return
 			}
-			if req.CoverURL != "" {
+			if req.ImageURLs != nil {
+				urls, err := maybeUploadImageStrings(r.Context(), store, maxUploadBytes, req.ImageURLs)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.ImageURLs = urls
+				if len(urls) > 0 {
+					req.CoverURL = urls[0]
+				} else {
+					req.CoverURL = ""
+				}
+			} else if req.CoverURL != "" {
 				url, err := maybeUploadImageString(r.Context(), store, maxUploadBytes, req.CoverURL)
 				if err != nil {
 					SendJBizFail(w, err.Error())
 					return
 				}
 				req.CoverURL = url
+				if url != "" {
+					req.ImageURLs = []string{url}
+				}
+			} else {
+				cur, err := svc.GetGoods(r.Context(), id)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
+				req.CoverURL = cur.CoverURL
+				req.ImageURLs = cur.ImageURLs
 			}
 		}
 

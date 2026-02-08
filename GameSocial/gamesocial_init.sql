@@ -11,6 +11,20 @@ CREATE DATABASE IF NOT EXISTS gamesocial
 -- 选择业务库。
 USE `gamesocial`;
 
+-- 数据库升级提示（9527：遇到 Unknown column 必看）
+-- 如果你在接口调用时遇到：
+-- Error 1054 (42S22): Unknown column 't.image_urls_json' in 'field list'
+-- 说明数据库还是旧结构，缺少多图字段。请在“目标库”单独执行下面两条 ALTER（不要整库 DROP 重建）：
+--
+-- ALTER TABLE tournament
+--   ADD COLUMN image_urls_json JSON NULL COMMENT '赛事图片 URL 列表 JSON（可为空）' AFTER cover_url;
+
+-- ALTER TABLE goods
+--   ADD COLUMN image_urls_json JSON NULL COMMENT '商品图片 URL 列表 JSON（可为空）' AFTER cover_url;
+--
+-- ALTER TABLE goods
+--   ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间' AFTER created_at;
+--
 -- 重置表结构：如果表已存在则先删除再创建（开发/调试用）。
 DROP TABLE IF EXISTS
   checkin_log,
@@ -134,13 +148,16 @@ CREATE TABLE goods (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
   name VARCHAR(128) NOT NULL COMMENT '商品名称',
   cover_url VARCHAR(512) NULL COMMENT '封面图 URL（可为空）',
+  image_urls_json JSON NULL COMMENT '商品图片 URL 列表 JSON（可为空）',
   points_price BIGINT NOT NULL COMMENT '兑换所需积分（>=0）',
   stock INT NOT NULL DEFAULT 0 COMMENT '库存（>=0；可用于实物）',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1=上架；0=下架/删除',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   KEY idx_goods_status (status),
-  KEY idx_goods_created_at (created_at)
+  KEY idx_goods_created_at (created_at),
+  KEY idx_goods_updated_at (updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分商品（饮品/毛巾等）';
 
 -- user_drink_balance：用户可用饮品数量（总量，不区分品类）。
@@ -190,6 +207,7 @@ CREATE TABLE tournament (
   title VARCHAR(128) NOT NULL COMMENT '赛事标题',
   content TEXT NULL COMMENT '赛事内容/详情（可为空）',
   cover_url VARCHAR(512) NULL COMMENT '封面图 URL（可为空）',
+  image_urls_json JSON NULL COMMENT '赛事图片 URL 列表 JSON（可为空）',
   start_at DATETIME NOT NULL COMMENT '开始时间',
   end_at DATETIME NOT NULL COMMENT '结束时间',
   status VARCHAR(16) NOT NULL COMMENT '赛事状态（例如 DRAFT/PUBLISHED/ENDED/CANCELED）',
@@ -374,18 +392,19 @@ ON DUPLICATE KEY UPDATE
   updated_at = VALUES(updated_at);
 
 -- 预置商品（开发用）。
-INSERT INTO goods (id, name, cover_url, points_price, stock, status, created_at)
+INSERT INTO goods (id, name, cover_url, points_price, stock, status, created_at, updated_at)
 VALUES
-  (2001, '饮料（兑换 +1 杯）', NULL, 50, 0, 1, NOW()),
-  (2002, '拳馆毛巾', NULL, 200, 0, 1, NOW()),
-  (2003, '手套消耗品', NULL, 120, 0, 1, NOW()),
-  (2004, '能量饮料（实物）', NULL, 100, 0, 1, NOW())
+  (2001, '饮料（兑换 +1 杯）', NULL, 50, 0, 1, NOW(), NOW()),
+  (2002, '拳馆毛巾', NULL, 200, 0, 1, NOW(), NOW()),
+  (2003, '手套消耗品', NULL, 120, 0, 1, NOW(), NOW()),
+  (2004, '能量饮料（实物）', NULL, 100, 0, 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
   name = VALUES(name),
   cover_url = VALUES(cover_url),
   points_price = VALUES(points_price),
   stock = VALUES(stock),
-  status = VALUES(status);
+  status = VALUES(status),
+  updated_at = VALUES(updated_at);
 
 -- 预置积分流水（开发用，演示幂等键 biz_type + biz_id）。
 INSERT INTO points_ledger (user_id, change_amount, balance_after, biz_type, biz_id, remark, created_at)

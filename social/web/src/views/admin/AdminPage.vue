@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import {
+  apiGetTempUploadInfos,
   adminCancelRedeemOrder,
   adminCreateRedeemOrder,
   adminDeleteGoods,
@@ -22,6 +23,7 @@ import {
   adminUpsertTaskDef,
   adminUpsertTournament,
   adminUseRedeemOrder,
+  directPutToUploadUrl,
 } from '../../api'
 import { useToastStore } from '../../stores/toast'
 
@@ -63,16 +65,25 @@ const userForm = ref({ id: '', nickname: '', avatarUrl: '', status: '1' })
 const orderForm = ref({ goodsId: '', quantity: '1', pointsPrice: '' })
 
 const goodsCoverFileEl = ref<HTMLInputElement | null>(null)
+const goodsImagesFileEl = ref<HTMLInputElement | null>(null)
 const tournamentCoverFileEl = ref<HTMLInputElement | null>(null)
+const tournamentImagesFileEl = ref<HTMLInputElement | null>(null)
 const userAvatarFileEl = ref<HTMLInputElement | null>(null)
 
 const goodsCoverFile = ref<File | null>(null)
+const goodsImageFiles = ref<File[]>([])
 const tournamentCoverFile = ref<File | null>(null)
+const tournamentImageFiles = ref<File[]>([])
 const userAvatarFile = ref<File | null>(null)
 
 const goodsCoverPreviewUrl = ref('')
+const goodsImagePreviewUrls = ref<string[]>([])
 const tournamentCoverPreviewUrl = ref('')
+const tournamentImagePreviewUrls = ref<string[]>([])
 const userAvatarPreviewUrl = ref('')
+
+const goodsImageUrls = ref<string[]>([])
+const tournamentImageUrls = ref<string[]>([])
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
@@ -90,6 +101,13 @@ const pickFileFromChange = (e: Event) => {
   return f
 }
 
+const pickFilesFromChange = (e: Event) => {
+  const input = e.target as HTMLInputElement | null
+  const files = input?.files ? Array.from(input.files) : []
+  if (input) input.value = ''
+  return files
+}
+
 const triggerPick = (el: HTMLInputElement | null) => {
   el?.click()
 }
@@ -97,6 +115,101 @@ const triggerPick = (el: HTMLInputElement | null) => {
 const clearPreviewUrl = (url: string) => {
   if (!url) return
   URL.revokeObjectURL(url)
+}
+
+const clearPreviewUrls = (urls: string[]) => {
+  for (const u of urls) clearPreviewUrl(u)
+}
+
+const asStringArray = (v: unknown) => {
+  if (!Array.isArray(v)) return []
+  return v.map((x) => String(x || '').trim()).filter(Boolean)
+}
+
+const parseJsonStringArray = (v: unknown) => {
+  if (typeof v !== 'string') return []
+  const s = v.trim()
+  if (!s) return []
+  try {
+    return asStringArray(JSON.parse(s))
+  } catch {
+    return []
+  }
+}
+
+const extractImageUrls = (item: Record<string, unknown>) => {
+  const urlsA = asStringArray(item.ImageURLs)
+  if (urlsA.length) return urlsA
+  const urlsB = parseJsonStringArray(item.ImageURLs)
+  if (urlsB.length) return urlsB
+  const urlsC = asStringArray(item.imageUrls)
+  if (urlsC.length) return urlsC
+  const urlsD = parseJsonStringArray(item.imageUrls)
+  if (urlsD.length) return urlsD
+  const urlsE = asStringArray(item.urls)
+  if (urlsE.length) return urlsE
+  const urlsF = parseJsonStringArray(item.urls)
+  if (urlsF.length) return urlsF
+  const urlsG = parseJsonStringArray(item.image_urls_json)
+  if (urlsG.length) return urlsG
+  return []
+}
+
+const normalizeContentType = (file: File) => {
+  const t = String(file && file.type).trim()
+  return t && t.startsWith('image/') ? t : 'image/png'
+}
+
+const uploadTempImages = async (files: File[], scene: string) => {
+  const list = files.filter(Boolean)
+  if (list.length === 0) return []
+  if (list.length > 10) throw new Error('一次最多上传 10 张图片')
+
+  const groups = new Map<string, Array<{ file: File; index: number }>>()
+  for (let i = 0; i < list.length; i++) {
+    const file = list[i]
+    const ct = normalizeContentType(file)
+    const arr = groups.get(ct) || []
+    arr.push({ file, index: i })
+    groups.set(ct, arr)
+  }
+
+  const out: string[] = Array.from({ length: list.length }).map(() => '')
+  for (const [contentType, group] of groups.entries()) {
+    const { items } = await apiGetTempUploadInfos({ count: group.length, contentType, scene })
+    if (!Array.isArray(items) || items.length !== group.length) throw new Error('临时上传信息数量不匹配')
+
+    for (let j = 0; j < group.length; j++) {
+      const { file, index } = group[j]
+      const item = items[j] || null
+      const uploadUrl = item && typeof item.uploadUrl === 'string' ? item.uploadUrl : ''
+      const authorization = item && typeof item.authorization === 'string' ? item.authorization : ''
+      const token = item && typeof item.token === 'string' ? item.token : ''
+      const cloudObjectMeta = item && typeof item.cloudObjectMeta === 'string' ? item.cloudObjectMeta : ''
+      const downloadUrl = item && typeof item.downloadUrl === 'string' ? item.downloadUrl : ''
+      const objectId = item && typeof item.objectId === 'string' ? item.objectId : ''
+      if (!uploadUrl || !authorization) throw new Error('临时上传信息不完整')
+
+      const headers: Record<string, string> = { Authorization: authorization, 'Content-Type': contentType }
+      if (token) headers['X-Cos-Security-Token'] = token
+      if (cloudObjectMeta) headers['X-Cos-Meta-Fileid'] = cloudObjectMeta
+
+      await directPutToUploadUrl(uploadUrl, file, headers)
+
+      const url = (downloadUrl || objectId).trim()
+      if (!url) throw new Error('上传成功但未返回图片地址')
+      out[index] = url
+    }
+  }
+
+  return out
+}
+
+const uploadTempImage = async (file: File, scene: string) => {
+  const urls = await uploadTempImages([file], scene)
+  const url = String(urls[0] || '').trim()
+  if (!url) throw new Error('上传成功但未返回图片地址')
+  return url
 }
 
 const onPickGoodsCover = (e: Event) => {
@@ -113,6 +226,33 @@ const onPickGoodsCover = (e: Event) => {
   toast.show('已选择封面，提交时上传', 'success')
 }
 
+const onPickGoodsImages = (e: Event) => {
+  const files = pickFilesFromChange(e)
+  if (files.length === 0) return
+  if (files.length > 10) {
+    toast.show('一次最多选择 10 张图片', 'error')
+    return
+  }
+  for (const f of files) {
+    const msg = validateImageFile(f)
+    if (msg) {
+      toast.show(msg, 'error')
+      return
+    }
+  }
+  goodsImageFiles.value = files
+  clearPreviewUrls(goodsImagePreviewUrls.value)
+  goodsImagePreviewUrls.value = files.map((f) => URL.createObjectURL(f))
+  toast.show(`已选择 ${files.length} 张，提交时上传`, 'success')
+}
+
+const clearGoodsImages = () => {
+  goodsImageUrls.value = []
+  goodsImageFiles.value = []
+  clearPreviewUrls(goodsImagePreviewUrls.value)
+  goodsImagePreviewUrls.value = []
+}
+
 const onPickTournamentCover = (e: Event) => {
   const file = pickFileFromChange(e)
   if (!file) return
@@ -125,6 +265,33 @@ const onPickTournamentCover = (e: Event) => {
   clearPreviewUrl(tournamentCoverPreviewUrl.value)
   tournamentCoverPreviewUrl.value = URL.createObjectURL(file)
   toast.show('已选择封面，提交时上传', 'success')
+}
+
+const onPickTournamentImages = (e: Event) => {
+  const files = pickFilesFromChange(e)
+  if (files.length === 0) return
+  if (files.length > 10) {
+    toast.show('一次最多选择 10 张图片', 'error')
+    return
+  }
+  for (const f of files) {
+    const msg = validateImageFile(f)
+    if (msg) {
+      toast.show(msg, 'error')
+      return
+    }
+  }
+  tournamentImageFiles.value = files
+  clearPreviewUrls(tournamentImagePreviewUrls.value)
+  tournamentImagePreviewUrls.value = files.map((f) => URL.createObjectURL(f))
+  toast.show(`已选择 ${files.length} 张，提交时上传`, 'success')
+}
+
+const clearTournamentImages = () => {
+  tournamentImageUrls.value = []
+  tournamentImageFiles.value = []
+  clearPreviewUrls(tournamentImagePreviewUrls.value)
+  tournamentImagePreviewUrls.value = []
 }
 
 const onPickUserAvatar = (e: Event) => {
@@ -199,10 +366,14 @@ const editGoods = async (id: number) => {
         stock: safeStr(item.stock),
         status: safeStr(item.status) || '1',
       }
+      goodsImageUrls.value = extractImageUrls(item)
     })
     goodsCoverFile.value = null
     clearPreviewUrl(goodsCoverPreviewUrl.value)
     goodsCoverPreviewUrl.value = ''
+    goodsImageFiles.value = []
+    clearPreviewUrls(goodsImagePreviewUrls.value)
+    goodsImagePreviewUrls.value = []
   } catch (e) {
     const err = e as { message?: unknown }
     toast.show((typeof err.message === 'string' && err.message) || '加载失败', 'error')
@@ -214,6 +385,10 @@ const resetGoodsForm = () => {
   goodsCoverFile.value = null
   clearPreviewUrl(goodsCoverPreviewUrl.value)
   goodsCoverPreviewUrl.value = ''
+  goodsImageUrls.value = []
+  goodsImageFiles.value = []
+  clearPreviewUrls(goodsImagePreviewUrls.value)
+  goodsImagePreviewUrls.value = []
 }
 
 const submitGoods = async () => {
@@ -226,12 +401,18 @@ const submitGoods = async () => {
   const id = asNumber(form.id)
   try {
     await withLoading(async () => {
+      const coverUrl = goodsCoverFile.value
+        ? await uploadTempImage(goodsCoverFile.value, 'goods')
+        : String(form.coverUrl || '').trim()
+      const imageUrls =
+        goodsImageFiles.value.length > 0 ? await uploadTempImages(goodsImageFiles.value, 'goods') : goodsImageUrls.value
       const payload = {
-        name: String(goodsForm.value.name || '').trim(),
-        pointsPrice: asNumber(goodsForm.value.pointsPrice),
-        stock: asNumber(goodsForm.value.stock),
-        status: asNumber(String(goodsForm.value.status || '1').trim() || '1'),
-        file: goodsCoverFile.value || undefined,
+        name,
+        coverUrl,
+        ImageURLs: imageUrls,
+        pointsPrice: asNumber(form.pointsPrice),
+        stock: asNumber(form.stock),
+        status: asNumber(String(form.status || '1').trim() || '1'),
       }
       await adminUpsertGoods(id || null, payload)
     })
@@ -284,10 +465,14 @@ const editTournament = async (id: number) => {
         status: safeStr(item.status) || 'DRAFT',
         createdByAdminId: safeStr(item.createdByAdminId) || '1',
       }
+      tournamentImageUrls.value = extractImageUrls(item)
     })
     tournamentCoverFile.value = null
     clearPreviewUrl(tournamentCoverPreviewUrl.value)
     tournamentCoverPreviewUrl.value = ''
+    tournamentImageFiles.value = []
+    clearPreviewUrls(tournamentImagePreviewUrls.value)
+    tournamentImagePreviewUrls.value = []
   } catch (e) {
     const err = e as { message?: unknown }
     toast.show((typeof err.message === 'string' && err.message) || '加载失败', 'error')
@@ -308,6 +493,10 @@ const resetTournamentForm = () => {
   tournamentCoverFile.value = null
   clearPreviewUrl(tournamentCoverPreviewUrl.value)
   tournamentCoverPreviewUrl.value = ''
+  tournamentImageUrls.value = []
+  tournamentImageFiles.value = []
+  clearPreviewUrls(tournamentImagePreviewUrls.value)
+  tournamentImagePreviewUrls.value = []
 }
 
 const submitTournament = async () => {
@@ -320,14 +509,22 @@ const submitTournament = async () => {
   const id = asNumber(form.id)
   try {
     await withLoading(async () => {
+      const coverUrl = tournamentCoverFile.value
+        ? await uploadTempImage(tournamentCoverFile.value, 'tournament')
+        : String(form.coverUrl || '').trim()
+      const imageUrls =
+        tournamentImageFiles.value.length > 0
+          ? await uploadTempImages(tournamentImageFiles.value, 'tournament')
+          : tournamentImageUrls.value
       const payload = {
-        title: String(tournamentForm.value.title || '').trim(),
-        content: String(tournamentForm.value.content || '').trim(),
-        startAt: String(tournamentForm.value.startAt || '').trim(),
-        endAt: String(tournamentForm.value.endAt || '').trim(),
-        status: String(tournamentForm.value.status || '').trim() || 'DRAFT',
-        createdByAdminId: asNumber(tournamentForm.value.createdByAdminId) || 1,
-        file: tournamentCoverFile.value || undefined,
+        title,
+        content: String(form.content || '').trim(),
+        coverUrl,
+        ImageURLs: imageUrls,
+        startAt: String(form.startAt || '').trim(),
+        endAt: String(form.endAt || '').trim(),
+        status: String(form.status || '').trim() || 'DRAFT',
+        createdByAdminId: asNumber(form.createdByAdminId) || 1,
       }
       await adminUpsertTournament(id || null, payload)
     })
@@ -504,12 +701,17 @@ const submitUser = async () => {
   }
   try {
     await withLoading(async () => {
-      const payload = {
-        nickname: String(userForm.value.nickname || '').trim(),
-        avatarUrl: String(userForm.value.avatarUrl || '').trim(),
-        status: asNumber(String(userForm.value.status || '1').trim() || '1'),
-        file: userAvatarFile.value || undefined,
-      }
+      const payload = userAvatarFile.value
+        ? {
+            nickname: String(form.nickname || '').trim(),
+            status: asNumber(String(form.status || '1').trim() || '1'),
+            file: userAvatarFile.value,
+          }
+        : {
+            nickname: String(form.nickname || '').trim(),
+            avatarUrl: String(form.avatarUrl || '').trim(),
+            status: asNumber(String(form.status || '1').trim() || '1'),
+          }
       await adminUpdateUser(id, payload)
     })
     toast.show('已更新', 'success')
@@ -657,6 +859,35 @@ onMounted(() => {
               style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px"
             />
             <div class="row">
+              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(goodsImagesFileEl)">
+                选择详情图(多张)
+              </button>
+              <input
+                ref="goodsImagesFileEl"
+                style="display: none"
+                type="file"
+                accept="image/*"
+                multiple
+                @change="onPickGoodsImages"
+              />
+              <button class="btn btn--ghost" :disabled="loading" @click="clearGoodsImages">清空多图</button>
+            </div>
+            <div v-if="goodsImageFiles.length > 0" class="help">已选择 {{ goodsImageFiles.length }} 张，提交时上传</div>
+            <div v-else-if="goodsImageUrls.length > 0" class="help">当前 {{ goodsImageUrls.length }} 张详情图</div>
+            <div
+              v-if="goodsImagePreviewUrls.length > 0 || goodsImageUrls.length > 0"
+              class="row"
+              style="flex-wrap: wrap; gap: 8px"
+            >
+              <img
+                v-for="(u, idx) in (goodsImagePreviewUrls.length > 0 ? goodsImagePreviewUrls : goodsImageUrls)"
+                :key="`${idx}-${u}`"
+                :src="u"
+                alt="img"
+                style="width: 72px; height: 72px; object-fit: cover; border-radius: 10px"
+              />
+            </div>
+            <div class="row">
               <input v-model="goodsForm.pointsPrice" class="input" placeholder="积分价格" />
               <input v-model="goodsForm.stock" class="input" placeholder="库存" />
               <input v-model="goodsForm.status" class="input" placeholder="状态(1/0)" />
@@ -711,6 +942,37 @@ onMounted(() => {
               alt="cover"
               style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px"
             />
+            <div class="row">
+              <button class="btn btn--ghost" :disabled="loading" @click="triggerPick(tournamentImagesFileEl)">
+                选择详情图(多张)
+              </button>
+              <input
+                ref="tournamentImagesFileEl"
+                style="display: none"
+                type="file"
+                accept="image/*"
+                multiple
+                @change="onPickTournamentImages"
+              />
+              <button class="btn btn--ghost" :disabled="loading" @click="clearTournamentImages">清空多图</button>
+            </div>
+            <div v-if="tournamentImageFiles.length > 0" class="help">
+              已选择 {{ tournamentImageFiles.length }} 张，提交时上传
+            </div>
+            <div v-else-if="tournamentImageUrls.length > 0" class="help">当前 {{ tournamentImageUrls.length }} 张详情图</div>
+            <div
+              v-if="tournamentImagePreviewUrls.length > 0 || tournamentImageUrls.length > 0"
+              class="row"
+              style="flex-wrap: wrap; gap: 8px"
+            >
+              <img
+                v-for="(u, idx) in (tournamentImagePreviewUrls.length > 0 ? tournamentImagePreviewUrls : tournamentImageUrls)"
+                :key="`${idx}-${u}`"
+                :src="u"
+                alt="img"
+                style="width: 72px; height: 72px; object-fit: cover; border-radius: 10px"
+              />
+            </div>
             <div class="row">
               <input v-model="tournamentForm.startAt" class="input" placeholder="startAt(RFC3339)" />
               <input v-model="tournamentForm.endAt" class="input" placeholder="endAt(RFC3339)" />

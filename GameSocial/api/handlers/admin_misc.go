@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -105,9 +106,9 @@ func AdminTournamentAwardsGrant() http.HandlerFunc {
 	}
 }
 
-func uploadImageToStore(r *http.Request, store media.Store, maxUploadBytes int64) (media.UploadResult, error) {
+func uploadImageToStore(r *http.Request, store media.ServerStore, maxUploadBytes int64) (media.UploadResult, error) {
 	if store == nil {
-		return media.UploadResult{}, errors.New("media store not configured: set MEDIA_COS_BUCKET_URL (COS bucket domain or CloudBase gateway domain) and restart server; if COS, also set MEDIA_COS_SECRET_ID/MEDIA_COS_SECRET_KEY")
+		return media.UploadResult{}, errors.New("media store not configured: set MEDIA_COS_BUCKET_URL and MEDIA_COS_SECRET_ID/MEDIA_COS_SECRET_KEY, then restart server")
 	}
 	if maxUploadBytes <= 0 {
 		maxUploadBytes = 10 * 1024 * 1024
@@ -150,7 +151,108 @@ func uploadImageToStore(r *http.Request, store media.Store, maxUploadBytes int64
 	return store.Upload(r.Context(), file, ct, header.Filename)
 }
 
-func maybeUploadImageString(ctx context.Context, store media.Store, maxUploadBytes int64, v string) (string, error) {
+func uploadImagesToStore(r *http.Request, store media.ServerStore, maxUploadBytes int64) ([]media.UploadResult, error) {
+	if store == nil {
+		return nil, errors.New("media store not configured: set MEDIA_COS_BUCKET_URL and MEDIA_COS_SECRET_ID/MEDIA_COS_SECRET_KEY, then restart server")
+	}
+	if maxUploadBytes <= 0 {
+		maxUploadBytes = 10 * 1024 * 1024
+	}
+	if r.MultipartForm == nil {
+		return nil, errors.New("missing multipart form")
+	}
+
+	files := make([]*multipart.FileHeader, 0, 8)
+	if v := r.MultipartForm.File["files"]; len(v) > 0 {
+		files = append(files, v...)
+	}
+	if v := r.MultipartForm.File["file"]; len(v) > 0 {
+		files = append(files, v...)
+	}
+	if len(files) == 0 {
+		return nil, errors.New("missing form file: file/files")
+	}
+	if len(files) > 9 {
+		return nil, errors.New("too many images")
+	}
+
+	out := make([]media.UploadResult, 0, len(files))
+	for _, header := range files {
+		if header == nil || header.Filename == "" {
+			return nil, errors.New("invalid filename")
+		}
+		if fileSize := header.Size; fileSize > 0 && fileSize > maxUploadBytes {
+			return nil, errors.New("file too large")
+		}
+
+		file, err := header.Open()
+		if err != nil {
+			return nil, errors.New("open file failed")
+		}
+
+		ct := header.Header.Get("Content-Type")
+		if ct == "" {
+			var sniff [512]byte
+			n, _ := io.ReadFull(file, sniff[:])
+			ct = http.DetectContentType(sniff[:n])
+			if seeker, ok := file.(interface {
+				Seek(offset int64, whence int) (int64, error)
+			}); ok {
+				_, _ = seeker.Seek(0, io.SeekStart)
+			}
+		}
+		if ct == "" {
+			ct = "application/octet-stream"
+		}
+		if !strings.HasPrefix(ct, "image/") {
+			_ = file.Close()
+			return nil, errors.New("only image/* is allowed")
+		}
+
+		if seeker, ok := file.(interface {
+			Seek(offset int64, whence int) (int64, error)
+		}); ok {
+			end, err := seeker.Seek(0, io.SeekEnd)
+			if err == nil {
+				if end > maxUploadBytes {
+					_ = file.Close()
+					return nil, errors.New("file too large")
+				}
+				_, _ = seeker.Seek(0, io.SeekStart)
+			}
+		}
+
+		res, err := store.Upload(r.Context(), file, ct, header.Filename)
+		_ = file.Close()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, res)
+	}
+	return out, nil
+}
+
+func maybeUploadImageStrings(ctx context.Context, store media.ServerStore, maxUploadBytes int64, list []string) ([]string, error) {
+	if len(list) == 0 {
+		return nil, nil
+	}
+	if len(list) > 9 {
+		return nil, errors.New("too many images")
+	}
+	out := make([]string, 0, len(list))
+	for _, v := range list {
+		url, err := maybeUploadImageString(ctx, store, maxUploadBytes, v)
+		if err != nil {
+			return nil, err
+		}
+		if url != "" {
+			out = append(out, url)
+		}
+	}
+	return out, nil
+}
+
+func maybeUploadImageString(ctx context.Context, store media.ServerStore, maxUploadBytes int64, v string) (string, error) {
 	v = strings.TrimSpace(v)
 	if v == "" {
 		return "", nil

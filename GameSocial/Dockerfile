@@ -1,8 +1,8 @@
 # 构建阶段：使用 Go 1.22-alpine，匹配 go.mod 版本要求
 FROM golang:1.22-alpine AS builder
-#scp -r ./ root@47.107.174.153:/root/app/
+#scp -r .\GameSocial\ root@47.107.174.153:/root/app
 #MEDIA_COS_SECRET_ID=1362326232
-# 47.107.174.153
+# ssh root@47.107.174.153
 
 WORKDIR /app
 

@@ -1,6 +1,6 @@
 const { clearToken, getToken } = require('./storage')
 
-const BASE_URL = 'https://www.u835587.nyat.app:26462'
+const BASE_URL = 'http://47.107.174.153:8080'
 
 const normalizeErrorMessage = data => {
   if (!data || typeof data !== 'object') return '请求失败'
