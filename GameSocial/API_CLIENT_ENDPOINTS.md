@@ -18,6 +18,9 @@
   - √ [PUT /api/users/me](#api-users-me-update)
 - √ [Media 模块（小程序：临时直传凭证）](#module-media-app)
   - √ [POST /api/media/temp-upload-infos](#api-media-temp-upload-infos)
+- √ [QRCode 模块（小程序：扫码校验/核销）](#module-qrcode-app)
+  - √ [POST /api/qrcodes/verify](#api-qrcodes-verify)
+  - √ [POST /api/qrcodes/use](#api-qrcodes-use)
 - √ [Points 模块（小程序：积分账户与流水）](#module-points)
   - √ [GET /api/points/balance](#api-points-balance)
   - √ [GET /api/points/ledgers](#api-points-ledgers)
@@ -499,6 +502,67 @@ curl -X POST "http://localhost:8080/api/media/temp-upload-infos" \
 备注：
 
 - 需要在 COS 控制台配置 CORS，至少允许 `PUT`，并放行请求头 `Authorization` 与 `Content-Type`
+
+---
+
+## module-qrcode-app
+QRCode 模块（小程序：扫码校验/核销） √
+
+说明：
+
+- 二维码图片由管理端生成并上传到 COS
+- 小程序扫码后得到一个字符串 token（二维码内容），把 token 传给后端做校验/核销
+- 后端不会解析“二维码图片”，只校验 token（token 是服务端加密后的 JSON）
+
+### api-qrcodes-verify
+POST /api/qrcodes/verify √
+
+用途：校验二维码 token 是否有效（不改变核销状态）。
+
+请求：
+
+- Method：`POST`
+- Path：`/api/qrcodes/verify`
+- Header：`Authorization: Bearer <token>`
+- Body：
+
+```json
+{
+  "token": "v1...."
+}
+```
+
+响应 `data` 字段：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| uuid | string | 二维码 UUID |
+| type | string | 用途（二维码作用） |
+| scene | string | 场景 |
+| userId | number | 绑定用户（可为空） |
+| issuedAt | string | 签发时间（RFC3339） |
+| expiresAt | string | 过期时间（RFC3339） |
+| data | object | 自定义扩展字段（可为空） |
+
+### api-qrcodes-use
+POST /api/qrcodes/use √
+
+用途：核销二维码（一次性二维码会变为 USED；并在 type=CHECKIN 时写一条 checkin_log）。
+
+请求：
+
+- Method：`POST`
+- Path：`/api/qrcodes/use`
+- Header：`Authorization: Bearer <token>`
+- Body：
+
+```json
+{
+  "token": "v1...."
+}
+```
+
+响应 `data` 字段：返回核销结果（包含 uuid/type/issuedAt/expiresAt/usedAt 等）。
 
 ---
 

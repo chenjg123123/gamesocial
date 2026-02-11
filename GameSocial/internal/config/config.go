@@ -46,6 +46,17 @@ type Config struct {
 	AuthTokenSecret string
 	// AuthTokenTTLSeconds: token 有效期（秒）。
 	AuthTokenTTLSeconds int64
+
+	// QRCodePublicKeyPEMBase64 / QRCodePrivateKeyPEMBase64：
+	// - 二维码 token 使用“非对称加密（RSA）”
+	// - 环境变量建议用 base64 存 PEM，避免换行问题（也支持直接放 PEM）
+	QRCodePublicKeyPEMBase64  string
+	QRCodePrivateKeyPEMBase64 string
+
+	// QRCodeDefaultTTLSeconds: 生成二维码时默认有效期（秒）。
+	QRCodeDefaultTTLSeconds int64
+	// QRCodePNGSize: 生成二维码 PNG 默认边长（像素）。
+	QRCodePNGSize int
 }
 
 // LoadConfig 加载应用配置。
@@ -84,6 +95,11 @@ func LoadConfig() (Config, error) {
 		WechatAppSecret:     os.Getenv("WECHAT_APP_SECRET"),
 		AuthTokenSecret:     os.Getenv("AUTH_TOKEN_SECRET"),
 		AuthTokenTTLSeconds: mustInt64(getenv("AUTH_TOKEN_TTL_SECONDS", "604800")),
+
+		QRCodePublicKeyPEMBase64:  os.Getenv("QRCODE_PUBLIC_KEY_PEM"),
+		QRCodePrivateKeyPEMBase64: os.Getenv("QRCODE_PRIVATE_KEY_PEM"),
+		QRCodeDefaultTTLSeconds:   mustInt64(getenv("QRCODE_DEFAULT_TTL_SECONDS", "300")),
+		QRCodePNGSize:             mustInt(getenv("QRCODE_PNG_SIZE", "320")),
 	}
 
 	if cfg.ServerPort <= 0 {
@@ -97,6 +113,12 @@ func LoadConfig() (Config, error) {
 	}
 	if cfg.MediaMaxUploadMB <= 0 {
 		return Config{}, fmt.Errorf("invalid MEDIA_MAX_UPLOAD_MB")
+	}
+	if cfg.QRCodeDefaultTTLSeconds <= 0 {
+		return Config{}, fmt.Errorf("invalid QRCODE_DEFAULT_TTL_SECONDS")
+	}
+	if cfg.QRCodePNGSize <= 0 {
+		return Config{}, fmt.Errorf("invalid QRCODE_PNG_SIZE")
 	}
 
 	return cfg, nil

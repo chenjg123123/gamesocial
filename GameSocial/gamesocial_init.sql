@@ -26,7 +26,11 @@ USE `gamesocial`;
 --   ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间' AFTER created_at;
 --
 -- 重置表结构：如果表已存在则先删除再创建（开发/调试用）。
+
+
+-- 规范格式的多表删除语句（分行+清晰缩进，避免语法解析错误）
 DROP TABLE IF EXISTS
+  qr_code,
   checkin_log,
   user_task_progress,
   task_def,
@@ -44,7 +48,7 @@ DROP TABLE IF EXISTS
   vip_subscription,
   user_level,
   admin_user,
-  `user`;
+  `user`; -- 最后一个表名后无多余逗号，`user`用反引号避免关键字冲突
 
 -- user：小程序用户主表（openid 唯一）。
 CREATE TABLE `user` (
@@ -314,6 +318,33 @@ CREATE TABLE checkin_log (
   KEY idx_checkin_log_checkin_at (checkin_at),
   CONSTRAINT fk_checkin_log_user FOREIGN KEY (user_id) REFERENCES `user`(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='到店打卡记录';
+
+-- qr_code：二维码记录（生成/上传/核销审计）。
+CREATE TABLE qr_code (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+  uuid CHAR(32) NOT NULL COMMENT '二维码唯一标识（UUID v4，无横杠）',
+  purpose VARCHAR(32) NOT NULL COMMENT '用途（如 CHECKIN/REDEEM_USE 等）',
+  scene VARCHAR(32) NOT NULL DEFAULT '' COMMENT '场景（可为空，如 goods/tournament）',
+  user_id BIGINT UNSIGNED NULL COMMENT '绑定用户（可为空）',
+  token TEXT NOT NULL COMMENT '二维码承载 token（加密后）',
+  image_url VARCHAR(512) NULL COMMENT '二维码图片 URL（可为空）',
+  image_key VARCHAR(512) NULL COMMENT '二维码图片对象 Key（可为空）',
+  image_content_type VARCHAR(64) NULL COMMENT '二维码图片 Content-Type（可为空）',
+  image_size_bytes BIGINT NOT NULL DEFAULT 0 COMMENT '二维码图片大小（字节）',
+  payload_json JSON NULL COMMENT '明文 payload 备份（用于排查，可为空）',
+  status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' COMMENT '状态：ACTIVE/ACTIVE_MULTI/USED/REVOKED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  expires_at DATETIME NOT NULL COMMENT '过期时间',
+  used_at DATETIME NULL COMMENT '核销时间（可为空）',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_qr_code_uuid (uuid),
+  KEY idx_qr_code_user_status (user_id, status),
+  KEY idx_qr_code_purpose_created (purpose, created_at),
+  KEY idx_qr_code_created (created_at),
+  KEY idx_qr_code_status_expires (status, expires_at),
+  CONSTRAINT fk_qr_code_user FOREIGN KEY (user_id) REFERENCES `user`(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='二维码记录（生成/核销审计）';
 
 -- 预置管理员账号（开发用）。
 INSERT INTO admin_user (id, username, password_hash, status, created_at, updated_at)

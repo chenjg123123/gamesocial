@@ -87,6 +87,11 @@ func AdminTournamentCreate(svc tournament.Service, store media.ServerStore, maxU
 					SendJBizFail(w, err.Error())
 					return
 				}
+				urls, err = media.MoveTempURLs(r.Context(), store, "tournament", urls)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
 				req.ImageURLs = urls
 				if len(urls) > 0 {
 					req.CoverURL = urls[0]
@@ -97,9 +102,22 @@ func AdminTournamentCreate(svc tournament.Service, store media.ServerStore, maxU
 					SendJBizFail(w, err.Error())
 					return
 				}
-				req.CoverURL = url
 				if url != "" {
-					req.ImageURLs = []string{url}
+					urls, err := media.MoveTempURLs(r.Context(), store, "tournament", []string{url})
+					if err != nil {
+						SendJBizFail(w, err.Error())
+						return
+					}
+					if len(urls) > 0 {
+						req.CoverURL = urls[0]
+						req.ImageURLs = urls
+					} else {
+						req.CoverURL = ""
+						req.ImageURLs = nil
+					}
+				} else {
+					req.CoverURL = ""
+					req.ImageURLs = nil
 				}
 			}
 		}
@@ -202,6 +220,11 @@ func AdminTournamentUpdate(svc tournament.Service, store media.ServerStore, maxU
 					SendJBizFail(w, err.Error())
 					return
 				}
+				urls, err = media.MoveTempURLs(r.Context(), store, "tournament", urls)
+				if err != nil {
+					SendJBizFail(w, err.Error())
+					return
+				}
 				req.ImageURLs = urls
 				if len(urls) > 0 {
 					req.CoverURL = urls[0]
@@ -214,9 +237,22 @@ func AdminTournamentUpdate(svc tournament.Service, store media.ServerStore, maxU
 					SendJBizFail(w, err.Error())
 					return
 				}
-				req.CoverURL = url
 				if url != "" {
-					req.ImageURLs = []string{url}
+					urls, err := media.MoveTempURLs(r.Context(), store, "tournament", []string{url})
+					if err != nil {
+						SendJBizFail(w, err.Error())
+						return
+					}
+					if len(urls) > 0 {
+						req.CoverURL = urls[0]
+						req.ImageURLs = urls
+					} else {
+						req.CoverURL = ""
+						req.ImageURLs = nil
+					}
+				} else {
+					req.CoverURL = ""
+					req.ImageURLs = nil
 				}
 			} else {
 				cur, err := svc.Get(r.Context(), id)

@@ -20,6 +20,7 @@ import (
 	"gamesocial/internal/wechat"
 	"gamesocial/modules/auth"
 	"gamesocial/modules/item"
+	"gamesocial/modules/qrcode"
 	"gamesocial/modules/redeem"
 	"gamesocial/modules/task"
 	"gamesocial/modules/tournament"
@@ -44,6 +45,8 @@ type App struct {
 	UserSvc user.Service
 	// RedeemSvc: 兑换订单业务服务。
 	RedeemSvc redeem.Service
+	// QRCodeSvc: 二维码生成/校验/核销服务。
+	QRCodeSvc qrcode.Service
 
 	// MediaStore: 媒体上传存储（如腾讯云 COS）。
 	MediaServerStore media.ServerStore
@@ -98,6 +101,7 @@ func main() {
 	// 1) MediaServerStore：服务端接收文件并用 COS SDK 上传（管理员后台/部分接口会用到）
 	// 2) MediaDirectStore：后端只下发“直传凭证”，前端自己 PUT 上传（小程序多图上传会用到）
 
+	var qrCodeStore media.ServerStore
 	if cfg.MediaCOSBucketURL != "" && cfg.MediaCOSSecretID != "" && cfg.MediaCOSSecretKey != "" {
 		store, err := media.NewCOSStore(
 			cfg.MediaCOSBucketURL,
@@ -111,6 +115,42 @@ func main() {
 		}
 		app.MediaServerStore = store
 		app.MediaDirectStore = store
+
+		qrStore, err := media.NewCOSStore(
+			cfg.MediaCOSBucketURL,
+			cfg.MediaCOSSecretID,
+			cfg.MediaCOSSecretKey,
+			"",
+			"qrcode",
+		)
+		if err != nil {
+			log.Fatalf("init qrcode store: %v", err)
+		}
+		qrCodeStore = qrStore
+	}
+
+	// 二维码服务（可选启用）：需要 RSA 公钥/私钥。
+	if cfg.QRCodePublicKeyPEMBase64 != "" && cfg.QRCodePrivateKeyPEMBase64 != "" {
+		pubPEM, err := media.DecodePEMFromEnv(cfg.QRCodePublicKeyPEMBase64)
+		if err != nil {
+			log.Fatalf("load qrcode public key: %v", err)
+		}
+		privPEM, err := media.DecodePEMFromEnv(cfg.QRCodePrivateKeyPEMBase64)
+		if err != nil {
+			log.Fatalf("load qrcode private key: %v", err)
+		}
+		pubKey, err := media.ParseRSAPublicKeyFromPEM(pubPEM)
+		if err != nil {
+			log.Fatalf("parse qrcode public key: %v", err)
+		}
+		privKey, err := media.ParseRSAPrivateKeyFromPEM(privPEM)
+		if err != nil {
+			log.Fatalf("parse qrcode private key: %v", err)
+		}
+		if qrCodeStore == nil {
+			qrCodeStore = app.MediaServerStore
+		}
+		app.QRCodeSvc = qrcode.NewService(db, qrCodeStore, pubKey, privKey, cfg.QRCodeDefaultTTLSeconds, cfg.QRCodePNGSize)
 	}
 
 	// 使用 net/http 的 ServeMux 进行路由分发（Go 1.22+ 支持 "METHOD /path" 形式的模式）。
@@ -181,6 +221,9 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("GET /api/tasks", handlers.AppTasksList(app.TaskSvc))
 	mux.HandleFunc("POST /api/tasks/checkin", handlers.AppTasksCheckin())
 	mux.HandleFunc("POST /api/tasks/{taskCode}/claim", handlers.AppTasksClaim())
+	// 小程序端：扫码核销二维码（例如 CHECKIN）。
+	mux.HandleFunc("POST /api/qrcodes/verify", handlers.AppQRCodesVerify(app.QRCodeSvc))
+	mux.HandleFunc("POST /api/qrcodes/use", handlers.AppQRCodesUse(app.QRCodeSvc))
 
 	// 管理员侧：商品管理 CRUD（暂未接入管理员鉴权中间件）。
 	mux.HandleFunc("POST /admin/goods", handlers.AdminGoodsCreate(app.ItemSvc, app.MediaServerStore, app.MediaMaxUploadBytes))
@@ -223,4 +266,7 @@ func registerRoutes(mux *http.ServeMux, app App) {
 	mux.HandleFunc("PUT /admin/users/{id}/drinks/use", handlers.AdminUsersDrinksUse())
 	mux.HandleFunc("POST /admin/tournaments/{id}/results/publish", handlers.AdminTournamentResultsPublish())
 	mux.HandleFunc("POST /admin/tournaments/{id}/awards/grant", handlers.AdminTournamentAwardsGrant())
+
+	// 管理端：生成二维码（用于展示给用户扫码）。
+	mux.HandleFunc("POST /admin/qrcodes", handlers.AdminQRCodesCreate(app.QRCodeSvc))
 }

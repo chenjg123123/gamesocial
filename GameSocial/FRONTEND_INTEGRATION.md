@@ -108,6 +108,8 @@ export async function cosPutUpload(item, file) {
 - GET `/api/users/me`（√）详见 [获取个人资料](API_CLIENT_ENDPOINTS.md#api-users-me-get)
 - PUT `/api/users/me`（√）详见 [更新个人资料](API_CLIENT_ENDPOINTS.md#api-users-me-update)
 - POST `/api/media/temp-upload-infos`（√）详见 [临时直传凭证](API_CLIENT_ENDPOINTS.md#api-media-temp-upload-infos)
+- POST `/api/qrcodes/verify`（√）详见 [二维码校验](API_CLIENT_ENDPOINTS.md#api-qrcodes-verify)
+- POST `/api/qrcodes/use`（√）详见 [二维码核销](API_CLIENT_ENDPOINTS.md#api-qrcodes-use)
 - GET `/api/points/balance`（√）详见 [积分余额](API_CLIENT_ENDPOINTS.md#api-points-balance)
 - GET `/api/points/ledgers`（√）详见 [积分流水](API_CLIENT_ENDPOINTS.md#api-points-ledgers)
 - GET `/api/vip/status`（√）详见 [会员状态](API_CLIENT_ENDPOINTS.md#api-vip-status)
@@ -155,6 +157,7 @@ export async function cosPutUpload(item, file) {
 - GET `/admin/redeem/orders/{id}`（√）详见 [订单详情](API_ADMIN_ENDPOINTS.md#api-admin-redeem-orders-get)
 - PUT `/admin/redeem/orders/{id}/use`（√）详见 [核销订单](API_ADMIN_ENDPOINTS.md#api-admin-redeem-orders-use)
 - PUT `/admin/redeem/orders/{id}/cancel`（√）详见 [取消订单](API_ADMIN_ENDPOINTS.md#api-admin-redeem-orders-cancel)
+- POST `/admin/qrcodes`（√）详见 [生成二维码](API_ADMIN_ENDPOINTS.md#api-admin-qrcodes-create)
 - POST `/admin/auth/login`（×）详见 [管理端登录](API_ADMIN_ENDPOINTS.md#api-admin-auth-login)
 - GET `/admin/auth/me`（×）详见 [管理端个人信息](API_ADMIN_ENDPOINTS.md#api-admin-auth-me)
 - POST `/admin/auth/logout`（×）详见 [管理端退出](API_ADMIN_ENDPOINTS.md#api-admin-auth-logout)
@@ -163,4 +166,3 @@ export async function cosPutUpload(item, file) {
 - PUT `/admin/users/{id}/drinks/use`（×）详见 [饮品核销](API_ADMIN_ENDPOINTS.md#api-admin-users-drinks-use)
 - POST `/admin/tournaments/{id}/results/publish`（×）详见 [发布成绩](API_ADMIN_ENDPOINTS.md#api-admin-tournament-results-publish)
 - POST `/admin/tournaments/{id}/awards/grant`（×）详见 [发放奖励](API_ADMIN_ENDPOINTS.md#api-admin-tournament-awards-grant)
-

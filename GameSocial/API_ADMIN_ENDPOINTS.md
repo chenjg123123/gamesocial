@@ -39,6 +39,8 @@
   - √ [GET /admin/redeem/orders/{id}](#api-admin-redeem-orders-get)
   - √ [PUT /admin/redeem/orders/{id}/use](#api-admin-redeem-orders-use)
   - √ [PUT /admin/redeem/orders/{id}/cancel](#api-admin-redeem-orders-cancel)
+- √ [QRCode 模块（管理员：生成二维码）](#module-qrcode)
+  - √ [POST /admin/qrcodes](#api-admin-qrcodes-create)
 - × [Admin 模块（管理员：登录/审计/关键操作）](#module-admin)
   - × [POST /admin/auth/login](#api-admin-auth-login)
   - × [GET /admin/auth/me](#api-admin-auth-me)
@@ -1721,6 +1723,36 @@ curl -X PUT "http://localhost:8080/admin/redeem/orders/10/cancel"
   "message": "ok"
 }
 ```
+
+---
+
+## module-qrcode
+QRCode 模块（管理员：生成二维码） √
+
+### api-admin-qrcodes-create
+POST /admin/qrcodes √
+
+用途：生成二维码（payload -> 加密 token -> 生成 PNG -> 上传到 COS -> 落库 qr_code）。
+
+请求：
+
+- Method：`POST`
+- Path：`/admin/qrcodes`
+- Body（示例）：
+
+```json
+{
+  "type": "CHECKIN",
+  "scene": "common",
+  "ttlSeconds": 120,
+  "oneTime": true,
+  "data": {
+    "shopId": 1
+  }
+}
+```
+
+响应：返回 uuid/token/imageUrl/expiresAt 等字段。
 
 ---
 
